@@ -10,6 +10,7 @@ RED = (255, 0, 0)
 LIGHT_RED = (255, 109, 106)
 BLUE = (0, 0, 255)
 LIGHT_BLUE = (173, 216, 230)
+GREEN_TABLE = (0,81,44)
 
 # General
 FPS = 60
