@@ -33,7 +33,7 @@ def play():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if BTN_PLAY_BACK.isClicked(MOUSE_POS):
                     main_menu()
-                # board.check_input(MOUSE_POS, SCREEN)
+                board.check_input(MOUSE_POS)
         pygame.display.update()
 
 

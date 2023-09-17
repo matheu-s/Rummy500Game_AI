@@ -1,7 +1,7 @@
 import random
 from random import shuffle
 from config.constants import *
-from card import Card
+from game.card import Card
 
 
 class Deck:
@@ -20,3 +20,9 @@ class Deck:
 
     def length(self):
         return len(self.cards)
+
+    def deal(self, number_of_cards=1):
+        dealt = self.cards[-number_of_cards:]
+        self.cards = self.cards[:-number_of_cards]
+        return dealt
+
