@@ -1,5 +1,5 @@
 # Main screen size
-WIDTH, HEIGHT = 1280, 720
+WIDTH, HEIGHT = 1600, 900
 
 # Colors
 GREEN = (127, 166, 80)
@@ -13,7 +13,7 @@ LIGHT_BLUE = (173, 216, 230)
 GREEN_TABLE = (0,81,44)
 
 # General
-FPS = 60
+FPS = 120
 
 #Cards
 SUITS = ['clubs', 'hearts', 'spades', 'diamonds']
