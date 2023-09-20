@@ -17,8 +17,8 @@ def get_font(size):
 def play():
     SCREEN.fill(GREEN_TABLE)
 
-    board = Board()
-    board.start_board(screen=SCREEN)
+    board = Board(screen=SCREEN)
+    board.start_board()
 
     BTN_PLAY_BACK = Button(image=None, pos=(WIDTH - 150, HEIGHT - 50),
                            text_input="BACK", font=get_font(20), base_color="White", hovering_color="Blue")

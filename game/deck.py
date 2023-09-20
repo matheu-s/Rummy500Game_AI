@@ -1,5 +1,5 @@
 import random
-from random import shuffle
+from itertools import combinations
 from config.constants import *
 from game.card import Card
 
