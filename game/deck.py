@@ -12,8 +12,6 @@ class Deck:
         for suit in SUITS:
             for value in range(1, 14):
                 self.cards.append(Card(value, suit))
-        self.cards.append(Card(0, 'joker_black'))
-        self.cards.append(Card(0, 'joker_red'))
 
     def shuffle(self):
         random.shuffle(self.cards)
