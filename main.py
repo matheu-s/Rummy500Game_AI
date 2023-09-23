@@ -1,5 +1,6 @@
 import pygame, sys
 from config.constants import *
+from config.messages import Messages
 from game.button import Button
 from game.board import Board
 
@@ -8,6 +9,9 @@ pygame.init()
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("RUMMY 500")
 BG = pygame.image.load("assets/images/bg.jpg")
+
+messages = Messages(SCREEN)
+messages.add_message('hey', 4)
 
 
 def get_font(size):
@@ -20,10 +24,6 @@ def play():
     board = Board(screen=SCREEN)
     board.start_board()
 
-    BTN_PLAY_BACK = Button(image=None, pos=(WIDTH - 150, HEIGHT - 50),
-                           text_input="BACK", font=get_font(20), base_color="White", hovering_color="Blue")
-    BTN_PLAY_BACK.update(SCREEN)
-
     held = False
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
@@ -32,16 +32,13 @@ def play():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                held = True
-                if BTN_PLAY_BACK.isClicked(MOUSE_POS):
+                # held = True
+                if not board.check_input(MOUSE_POS):
                     main_menu()
-                board.check_input(MOUSE_POS)
             if event.type == pygame.MOUSEBUTTONUP:
                 held = False
-        if held:
-            board.check_drag(MOUSE_POS)
+        messages.check_queue()
         pygame.display.update()
-
 
 
 def rules():
@@ -59,7 +56,7 @@ def rules():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if BTN_OPTIONS_BACK.isClicked(MOUSE_POS):
+                if BTN_OPTIONS_BACK.is_clicked(MOUSE_POS):
                     main_menu()
 
         pygame.display.update()
@@ -76,13 +73,13 @@ def main_menu():
         MENU_MOUSE_POS = pygame.mouse.get_pos()
 
         MENU_TEXT = get_font(100).render("MAIN MENU", True, "#006400")
-        MENU_RECT = MENU_TEXT.get_rect(center=(WIDTH/2, 150))
+        MENU_RECT = MENU_TEXT.get_rect(center=(WIDTH / 2, 150))
 
-        PLAY_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH/2, 300),
+        PLAY_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 300),
                              text_input="PLAY", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-        OPTIONS_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH/2, 450),
+        OPTIONS_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 450),
                                 text_input="RULES", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-        QUIT_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH/2, 600),
+        QUIT_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 600),
                              text_input="QUIT", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
@@ -97,11 +94,11 @@ def main_menu():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if PLAY_BUTTON.isClicked(MENU_MOUSE_POS):
+                if PLAY_BUTTON.is_clicked(MENU_MOUSE_POS):
                     play()
-                if OPTIONS_BUTTON.isClicked(MENU_MOUSE_POS):
+                if OPTIONS_BUTTON.is_clicked(MENU_MOUSE_POS):
                     rules()
-                if QUIT_BUTTON.isClicked(MENU_MOUSE_POS):
+                if QUIT_BUTTON.is_clicked(MENU_MOUSE_POS):
                     pygame.quit()
                     sys.exit()
 

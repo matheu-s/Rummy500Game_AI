@@ -13,6 +13,16 @@ class Hand:
     def set_cards(self, cards):
         self.cards = cards
 
+    def add_cards(self, cards):
+        if type(cards) == list:
+            for i in cards:
+                self.cards.append(i)
+        else:
+            self.cards.append(cards)
+
+    def discard(self, card):
+        self.cards.remove(card)
+
     def sort(self):
         cards_dict = {
             'spades': [],
