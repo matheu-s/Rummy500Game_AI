@@ -7,11 +7,9 @@ from game.board import Board
 pygame.init()
 
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+MESSENGER = Messages(SCREEN)
 pygame.display.set_caption("RUMMY 500")
 BG = pygame.image.load("assets/images/bg.jpg")
-
-messages = Messages(SCREEN)
-messages.add_message('hey', 4)
 
 
 def get_font(size):
@@ -21,10 +19,9 @@ def get_font(size):
 def play():
     SCREEN.fill(GREEN_TABLE)
 
-    board = Board(screen=SCREEN)
+    board = Board(screen=SCREEN, messenger=MESSENGER)
     board.start_board()
 
-    held = False
     while True:
         MOUSE_POS = pygame.mouse.get_pos()
         for event in pygame.event.get():
@@ -32,12 +29,10 @@ def play():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # held = True
                 if not board.check_input(MOUSE_POS):
                     main_menu()
-            if event.type == pygame.MOUSEBUTTONUP:
-                held = False
-        messages.check_queue()
+
+        MESSENGER.check_queue()
         pygame.display.update()
 
 

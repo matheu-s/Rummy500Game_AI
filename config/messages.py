@@ -34,9 +34,11 @@ class Messages:
 
         if current_time < message['erase_time']:
             font = get_font(24)
-            text = font.render(message['text'][0], True, (255, 255, 255))
-            self.screen.blit(text, (WIDTH/2)+50, (HEIGHT -200))
+            text = font.render(message['text'], True, (255, 255, 255))
+            self.screen.blit(text, ((WIDTH/2)-250, (HEIGHT -225)))
         else:
+            pygame.draw.rect(self.screen, GREEN_TABLE, pygame.Rect((WIDTH/2)-250, (HEIGHT -225), 1000, 50))
+            pygame.display.flip()
             self.message_queue.pop(0)
 
 

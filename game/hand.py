@@ -17,11 +17,14 @@ class Hand:
         if type(cards) == list:
             for i in cards:
                 self.cards.append(i)
+                self.pos += 25
         else:
             self.cards.append(cards)
+            self.pos += 25
 
     def discard(self, card):
         self.cards.remove(card)
+        self.pos -= 25
 
     def sort(self):
         cards_dict = {
@@ -80,3 +83,11 @@ class Hand:
 
         self.cards = copy_cards
         return sequences, groups
+
+    def meld(self, meld):
+        for card in meld:
+            for own_card in self.cards:
+                if card.suit == own_card.suit and card.value == own_card.value:
+                    self.cards.remove(own_card)
+                    self.pos -= 25
+
