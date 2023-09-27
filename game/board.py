@@ -1,6 +1,7 @@
 import pygame, time, os, sys
 from config.constants import *
 from game.player import Player
+from game.card import Card
 from game.deck import Deck
 from game.button import Button
 from game.hand import Hand
@@ -21,7 +22,7 @@ class Board:
     temp_melds = None
     messenger = None
     button_organize = None
-    button_lay = None
+    button_continue = None
     button_back = None
     deck = None
     turn = None
@@ -36,7 +37,7 @@ class Board:
         self.discard_pile = DiscardPile()
         self.temp_melds = []
         self.hidden_deck_rect = None
-        self.button_lay = None
+        self.button_continue = None
         self.button_organize = None
         self.button_back = None
         self.turn = self.player_human
@@ -69,42 +70,54 @@ class Board:
                 # Player decides to draw a card from hidden deck
                 if self.hidden_deck_rect.collidepoint(mouse_pos):
                     self.player_human.hand.add_cards(self.deck.deal(1))
-                    self.action = 'meld'
-                    self.messenger.add_message('Click Lay Down to check possible melds', 4000)
+                    self.action = 'proceed'
+                    self.messenger.add_message('Click Continue to check possible melds', 2000)
                     self.update_board()
                     return True
 
                 # Player decides to draw a card/cards from discard pile
                 for i in range(len(self.discard_pile.cards)):
                     if self.discard_pile.cards[i].is_clicked(mouse_pos):
-                        print('getting from discard pile')
                         self.player_human.hand.add_cards(self.discard_pile.get_card(self.discard_pile.cards[i], i))
-                        self.action = 'meld'
-                        self.messenger.add_message('Click Lay Down to check possible melds', 4000)
+                        self.action = 'proceed'
+                        self.messenger.add_message('Click Continue to check possible melds', 2000)
                         self.update_board()
                         break
 
+            if self.action == 'proceed' and self.button_continue.is_clicked(mouse_pos):
+                mouse_pos = 0  # To not count this click twice for next action
+                self.action = 'meld'
+
             if self.action == 'meld':
-                # Player checks possible melds
-                if self.button_lay.is_clicked(mouse_pos):
-                    self.display_possible_melds()
-                    if len(self.temp_melds):
-                        self.messenger.add_message('Choose a meld to lay', 2000)
-                        return True
-                    # TODO: lay down card in existing melds
-                    self.messenger.add_message('No melds are possible', 2000)
-                    self.action = 'discard'
+                # Checking and rendering possible melds
+                seq, group = self.player_human.hand.get_melds()
+                if len(seq) or len(group):
+                    # self.update_board(with_temp=True)
+                    self.messenger.add_message('You can choose a meld to lay or simply continue', 1500)
+                else:
+                    self.messenger.add_message('No combined melds are possible', 1500)
+                    self.action = 'meld_card'
                     return True
 
-                # Add meld to player if any clicked
+                # Check if meld is clicked and add it to player
                 for meld in self.temp_melds:
-                    for card in meld.cards:
-                        if card.is_clicked(mouse_pos):
-                            self.player_human.melds.append(meld)
-                            self.player_human.hand.meld(meld.cards)
-                            break
+                    if meld.is_clicked(mouse_pos):
+                        self.player_human.hand.meld(meld)
+                        self.player_human.melds.append(meld)
+                        self.temp_melds.remove(meld)
 
-                self.update_board()
+                self.update_board(with_temp=True)
+
+                if mouse_pos == 0:
+                    return True
+                # Player chooses to not lay down
+                if self.button_continue.is_clicked(mouse_pos):
+                    self.action = 'meld_card'
+                    return True
+
+            if self.action == 'meld_card':
+                # TODO: Individual cards lay...
+                print('choose cards and the meld you want to lay it')
 
             if self.action == 'discard':
                 for card in self.player_human.hand.cards:
@@ -126,7 +139,7 @@ class Board:
 
     def render_cards(self):
         # Inserting hidden deck
-        hidden_deck = pygame.image.load(f'assets/images/cards/back_side.png')
+        hidden_deck = pygame.image.load(f'assets/images/cards/back_side.png').convert()
         hidden_deck_width = 686 * 0.15
         hidden_deck_heigth = 976 * 0.15
         hidden_deck = pygame.transform.scale(hidden_deck, (int(hidden_deck_width), int(hidden_deck_heigth)))
@@ -137,9 +150,10 @@ class Board:
         card_height = 726 * 0.204
         hidden_deck_heigth = 976 * 0.15
 
+        # TODO: Center hand cards automatically accroding to width... len(cards)*25 = width..
         # Rendering engine cards
         self.player_engine.hand.pos = 0
-        hidden_img = pygame.image.load(f'assets/images/cards/back_side.png')
+        hidden_img = pygame.image.load(f'assets/images/cards/back_side.png').convert()
         for i in self.player_engine.hand.cards:
             card = pygame.transform.scale(hidden_img, (int(card_width), int(card_height)))
             card_rect = self.screen.blit(card, (600 + self.player_engine.hand.pos, 20))
@@ -169,10 +183,11 @@ class Board:
                                       hovering_color="Blue")
         self.button_organize.update(self.screen)
 
-        # Button to lay human cards
-        self.button_lay = Button(image=None, pos=(WIDTH - 150, HEIGHT - 50),
-                                 text_input="Lay down", font=get_font(20), base_color="White", hovering_color="Blue")
-        self.button_lay.update(self.screen)
+        # Button to continue the flow
+        self.button_continue = Button(image=None, pos=(WIDTH - 150, HEIGHT - 50),
+                                      text_input="Continue", font=get_font(20), base_color="White",
+                                      hovering_color="Blue")
+        self.button_continue.update(self.screen)
 
         # Back to menu button
         self.button_back = Button(image=None, pos=(WIDTH - 50, HEIGHT - 50),
@@ -180,28 +195,59 @@ class Board:
         self.button_back.update(self.screen)
 
     def render_melds(self):
-        # TODO: Render melds for each player
-        print('todo...')
+        card_width = 500 * 0.150
+        card_height = 726 * 0.150
 
-    def update_board(self):
+        # Rendering human melds
+        width_counter = 0
+        height_counter = 0
+        for meld in self.player_human.melds:
+            for card in meld.cards:
+                card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
+                card_rect = self.screen.blit(card_display, ((WIDTH - 350) + width_counter, 40 + height_counter))
+                card.set_rect(card_rect)
+                width_counter += 20
+            height_counter += 150
+            width_counter = 0
+
+        # Rendering engine melds
+        width_counter = 0
+        height_counter = 0
+        for meld in self.player_engine.melds:
+            for card in meld.cards:
+                card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
+                card_rect = self.screen.blit(card_display, 150 + width_counter, 40 + height_counter)
+                card.set_rect(card_rect)
+                width_counter += 20
+            height_counter += 150
+            width_counter = 0
+
+    def update_board(self, with_temp=False):
         self.screen.fill(GREEN_TABLE)
         self.render_buttons()
         self.render_cards()
+        self.render_melds()
+        if with_temp:
+            self.render_temp_melds()
 
-    def display_possible_melds(self, ):
+    def render_temp_melds(self):
+        self.temp_melds = []
         card_width = 500 * 0.150
         card_height = 726 * 0.150
         width_counter = 0
         height_counter = 0
 
-        groups, seq = self.player_human.hand.get_melds()
-        possible_melds = groups + seq
+        groups, seqs = self.player_human.hand.get_melds()
+        possible_melds = groups + seqs
         for meld in possible_melds:
-            self.temp_melds.append(Meld(meld))
+            meld_cards = []
             for card in meld:
-                card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
+                new_card = Card(card.value, card.suit)
+                card_display = pygame.transform.scale(new_card.image, (int(card_width), int(card_height)))
                 card_rect = self.screen.blit(card_display, (100 + width_counter, 20 + height_counter))
-                card.set_rect(card_rect)
+                new_card.set_rect(card_rect)
+                meld_cards.append(new_card)
                 width_counter += 20
+            self.temp_melds.append(Meld(meld_cards))
             height_counter += 150
             width_counter = 0

@@ -35,6 +35,7 @@ class Messages:
         if current_time < message['erase_time']:
             font = get_font(24)
             text = font.render(message['text'], True, (255, 255, 255))
+            # TODO: Center the message automatically
             self.screen.blit(text, ((WIDTH/2)-250, (HEIGHT -225)))
         else:
             pygame.draw.rect(self.screen, GREEN_TABLE, pygame.Rect((WIDTH/2)-250, (HEIGHT -225), 1000, 50))

@@ -14,3 +14,9 @@ class Meld:
         # TODO
         print('calculate points')
 
+    def is_clicked(self, mouse_pos):
+        for card in self.cards:
+            if card.is_clicked(mouse_pos):
+                return True
+        return False
+

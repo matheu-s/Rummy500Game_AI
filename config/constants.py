@@ -13,7 +13,7 @@ LIGHT_BLUE = (173, 216, 230)
 GREEN_TABLE = (0,81,44)
 
 # General
-FPS = 120
+FPS = 60
 
 #Cards
 SUITS = ['clubs', 'hearts', 'spades', 'diamonds']

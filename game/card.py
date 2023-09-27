@@ -6,10 +6,11 @@ class Card:
     suit = None
     image = None
     rect = None
+
     def __init__(self, value, suit):
         self.value = value
         self.suit = suit
-        self.image = pygame.image.load(f'assets/images/cards/{value}_{suit}.png')
+        self.image = pygame.image.load(f'assets/images/cards/{value}_{suit}.png').convert()
         self.rect = None
 
     def set_rect(self, rect):
@@ -19,4 +20,3 @@ class Card:
 
     def is_clicked(self, mouse_pos):
         return self.rect.collidepoint(mouse_pos)
-

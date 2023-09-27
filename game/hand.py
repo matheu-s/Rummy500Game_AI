@@ -85,7 +85,7 @@ class Hand:
         return sequences, groups
 
     def meld(self, meld):
-        for card in meld:
+        for card in meld.cards:
             for own_card in self.cards:
                 if card.suit == own_card.suit and card.value == own_card.value:
                     self.cards.remove(own_card)
