@@ -1,5 +1,6 @@
 from itertools import combinations
 from game.card import Card
+from game.meld import Meld
 
 
 class Hand:
@@ -57,29 +58,12 @@ class Hand:
 
         sequences = []
         groups = []
-
-        def is_seq(cards):
-            for ind in range(1, len(cards)):
-                if cards[ind - 1].suit != cards[ind].suit:
-                    return False
-                if cards[ind - 1].value != cards[ind].value - 1:
-                    return False
-            return True
-
-        def is_group(cards):
-            for ind in range(1, len(cards)):
-                if cards[ind - 1].value != cards[ind].value:
-                    return False
-            return True
-
         # Checking possible sequences and groups
         for r in range(3, len(self.cards) + 1):
             for comb in combinations(self.cards, r):
                 comb = list(comb)
-                if is_seq(comb):
+                if self.is_meld(comb):
                     sequences.append(comb)
-                elif is_group(comb):
-                    groups.append(comb)
 
         self.cards = copy_cards
         return sequences, groups
@@ -91,3 +75,19 @@ class Hand:
                     self.cards.remove(own_card)
                     self.pos -= 25
 
+    def is_meld(self, cards):
+        def is_seq(cards2):
+            for ind in range(1, len(cards2)):
+                if cards2[ind - 1].suit != cards2[ind].suit:
+                    return False
+                if cards2[ind - 1].value != cards2[ind].value - 1:
+                    return False
+            return True
+
+        def is_group(cards2):
+            for ind in range(1, len(cards2)):
+                if cards2[ind - 1].value != cards2[ind].value:
+                    return False
+            return True
+
+        return is_seq(cards) or is_group(cards)

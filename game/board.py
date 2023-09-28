@@ -20,6 +20,7 @@ class Board:
     hidden_deck_rect = None
     discard_pile = None
     temp_melds = None
+    temp_chosen_card = None
     messenger = None
     button_organize = None
     button_continue = None
@@ -36,6 +37,7 @@ class Board:
         self.deck = Deck()
         self.discard_pile = DiscardPile()
         self.temp_melds = []
+        self.temp_chosen_card = None
         self.hidden_deck_rect = None
         self.button_continue = None
         self.button_organize = None
@@ -93,9 +95,9 @@ class Board:
                 seq, group = self.player_human.hand.get_melds()
                 if len(seq) or len(group):
                     # self.update_board(with_temp=True)
-                    self.messenger.add_message('You can choose a meld to lay or simply continue', 1500)
+                    self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
                 else:
-                    self.messenger.add_message('No combined melds are possible', 1500)
+                    self.messenger.add_message('No melds are possible', 1500)
                     self.action = 'meld_card'
                     return True
 
@@ -113,11 +115,41 @@ class Board:
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
                     self.action = 'meld_card'
+                    self.messenger('You can try to lay cards from your hand into any melds on the table', 2000)
                     return True
 
             if self.action == 'meld_card':
-                # TODO: Individual cards lay...
-                print('choose cards and the meld you want to lay it')
+                # Erasing temp melds
+                self.update_board(with_temp=False)
+
+                for card in self.player_human.hand.cards:
+                    if card.is_clicked(mouse_pos):
+                        self.temp_chosen_card = card
+                        self.messenger.add_message(f'Choose a meld to lay the {card.value} of {card.suit}.', 2000)
+                        return True
+
+                for meld in self.player_human.melds:
+                    if meld.is_clicked(mouse_pos) \
+                            and (self.player_human.hand.is_meld(meld.cards + [self.temp_chosen_card])
+                                 or self.player_human.hand.is_meld([self.temp_chosen_card] + meld.cards)):
+                        meld.add_card(self.temp_chosen_card)
+                        self.player_human.hand.discard(self.temp_chosen_card)
+                        self.update_board()
+                        return True
+
+                for meld in self.player_engine.melds:
+                    if meld.is_clicked(mouse_pos) \
+                            and (self.player_engine.hand.is_meld(meld.cards + [self.temp_chosen_card])
+                                 or self.player_engine.hand.is_meld([self.temp_chosen_card] + meld.cards)):
+                        meld.add_card(self.temp_chosen_card)
+                        self.player_engine.hand.discard(self.temp_chosen_card)
+                        self.update_board()
+                        return True
+
+                if self.button_continue.is_clicked(mouse_pos):
+                    self.action = 'discard'
+                    self.messenger.add_message('Discard a card', 1500)
+                    return True
 
             if self.action == 'discard':
                 for card in self.player_human.hand.cards:
@@ -238,8 +270,7 @@ class Board:
         height_counter = 0
 
         groups, seqs = self.player_human.hand.get_melds()
-        possible_melds = groups + seqs
-        for meld in possible_melds:
+        for meld in groups:
             meld_cards = []
             for card in meld:
                 new_card = Card(card.value, card.suit)
@@ -248,6 +279,19 @@ class Board:
                 new_card.set_rect(card_rect)
                 meld_cards.append(new_card)
                 width_counter += 20
-            self.temp_melds.append(Meld(meld_cards))
+            self.temp_melds.append(Meld(meld_cards, 'group'))
+            height_counter += 150
+            width_counter = 0
+
+        for meld in seqs:
+            meld_cards = []
+            for card in meld:
+                new_card = Card(card.value, card.suit)
+                card_display = pygame.transform.scale(new_card.image, (int(card_width), int(card_height)))
+                card_rect = self.screen.blit(card_display, (100 + width_counter, 20 + height_counter))
+                new_card.set_rect(card_rect)
+                meld_cards.append(new_card)
+                width_counter += 20
+            self.temp_melds.append(Meld(meld_cards, 'seq'))
             height_counter += 150
             width_counter = 0
