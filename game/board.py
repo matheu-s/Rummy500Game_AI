@@ -59,6 +59,9 @@ class Board:
         # Rendering buttons
         self.render_buttons()
 
+        # Rendering points
+        self.render_points()
+
     def check_input(self, mouse_pos):
         # Organize and Back button can be used anytime
         if self.button_back.is_clicked(mouse_pos):
@@ -115,7 +118,8 @@ class Board:
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
                     self.action = 'meld_card'
-                    self.messenger('You can try to lay cards from your hand into any melds on the table', 2000)
+                    self.messenger.add_message('You can try to lay cards from your hand into any melds on the table',
+                                               2000)
                     return True
 
             if self.action == 'meld_card':
@@ -254,11 +258,24 @@ class Board:
             height_counter += 150
             width_counter = 0
 
+    def render_points(self):
+        # Gathering points info
+        human_points = self.player_human.get_points()
+        engine_points = self.player_engine.get_points()
+
+        # Displaying points
+        font = get_font(24)
+        human_points_text = font.render(f'Your points: {human_points}', True, (255, 255, 255))
+        engine_points_text = font.render(f'Engine points: {engine_points}', True, (255, 255, 255))
+        self.screen.blit(human_points_text, (WIDTH - 200, 5))
+        self.screen.blit(engine_points_text, (10, 5))
+
     def update_board(self, with_temp=False):
         self.screen.fill(GREEN_TABLE)
         self.render_buttons()
         self.render_cards()
         self.render_melds()
+        self.render_points()
         if with_temp:
             self.render_temp_melds()
 

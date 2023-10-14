@@ -13,8 +13,10 @@ class Meld:
         self.points = 0
 
     def calculate_points(self):
-        # TODO
-        print('calculate points')
+        self.points = 0
+        for card in self.cards:
+            self.points += card.points
+        return self.points
 
     def is_clicked(self, mouse_pos):
         for card in self.cards:

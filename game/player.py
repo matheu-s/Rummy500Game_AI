@@ -17,3 +17,9 @@ class Player:
     def set_hand(self, hand):
         self.hand = hand
 
+    def get_points(self):
+        self.points = 0
+        for meld in self.melds:
+            self.points += meld.calculate_points()
+        return self.points
+
