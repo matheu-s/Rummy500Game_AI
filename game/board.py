@@ -7,6 +7,7 @@ from game.button import Button
 from game.hand import Hand
 from game.meld import Meld
 from game.discard_pile import DiscardPile
+from engine.srs import SRS
 
 
 def get_font(size):
@@ -28,6 +29,7 @@ class Board:
     deck = None
     turn = None
     action = None
+    engine = None
 
     def __init__(self, screen, messenger):
         self.screen = screen
@@ -44,6 +46,7 @@ class Board:
         self.button_back = None
         self.turn = self.player_human
         self.action = 'draw_card'
+        self.engine = SRS()
 
     def start_board(self):
         self.deck.shuffle()
@@ -165,6 +168,22 @@ class Board:
                         self.turn = self.player_engine
                         self.action = 'draw_card'
                         break
+
+        if self.turn == self.player_engine:
+            self.engine.update_data(self.get_board_data())
+            if self.action == 'draw_card':
+                if self.engine.get_draw_action() == 'draw_hidden':
+                    self.player_engine.hand.add_cards(self.deck.deal(1))
+                    self.action = 'meld'
+                    print('engine got card from hidden pile')
+                    self.engine.update_data(self.get_board_data())
+                    self.update_board()
+            if self.action == 'meld':
+                print('engine will check meld action...')
+
+
+
+
 
         return True
 
@@ -312,3 +331,49 @@ class Board:
             self.temp_melds.append(Meld(meld_cards, 'seq'))
             height_counter += 150
             width_counter = 0
+
+    def get_board_data(self):
+        seen_cards = []
+        all_cards = []
+        for suit in SUITS:
+            for value in range(1, 14):
+                all_cards.append(f'{value}{suit[0]}')
+
+        engine_cards = []
+        for card in self.player_engine.hand.cards:
+            engine_cards.append(f'{card.value}{card.suit[0]}')
+            seen_cards.append(f'{card.value}{card.suit[0]}')
+
+        engine_melds = []
+        for meld in self.player_engine.melds:
+            for card in meld:
+                engine_melds.append(f'{card.value}{card.suit[0]}')
+                seen_cards.append(f'{card.value}{card.suit[0]}')
+
+        human_melds = []
+        for meld in self.player_human.melds:
+            for card in meld:
+                engine_melds.append(f'{card.value}{card.suit[0]}')
+                seen_cards.append(f'{card.value}{card.suit[0]}')
+
+        discard_pile = []
+        for card in self.discard_pile.cards:
+            discard_pile.append(f'{card.value}{card.suit[0]}')
+            seen_cards.append(f'{card.value}{card.suit[0]}')
+
+        unseen_cards = [card for card in all_cards if card not in seen_cards]
+
+        board_data = {
+            'engine_points': self.player_engine.get_points(),
+            'engine_cards': engine_cards,
+            'engine_melds': engine_melds,
+            'human_melds': human_melds,
+            'human_hand_length': len(self.player_human.hand.cards),
+            'human_points': self.player_human.get_points(),
+            'discard_pile_cards': discard_pile,
+            'all_cards': all_cards,
+            'seen_cards': seen_cards,
+            'unseen_cards': unseen_cards
+        }
+
+        return board_data
