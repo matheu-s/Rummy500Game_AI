@@ -45,7 +45,7 @@ class Board:
         self.button_organize = None
         self.button_back = None
         self.turn = self.player_human
-        self.action = 'draw_card'
+        self.action = Actions.DRAW.value
         self.engine = SRS()
 
     def start_board(self):
@@ -69,16 +69,14 @@ class Board:
         # Organize and Back button can be used anytime
         if self.button_back.is_clicked(mouse_pos):
             return False
-        if self.button_organize.is_clicked(mouse_pos):
-            self.sort_hand()
 
         # Checking if player turn and action are corresponding to clicked object
         if self.turn == self.player_human:
-            if self.action == 'draw_card':
+            if self.action == Actions.DRAW.value:
                 # Player decides to draw a card from hidden deck
                 if self.hidden_deck_rect.collidepoint(mouse_pos):
                     self.player_human.hand.add_cards(self.deck.deal(1))
-                    self.action = 'proceed'
+                    self.action = Actions.PROCEED.value
                     self.messenger.add_message('Click Continue to check possible melds', 2000)
                     self.update_board()
                     return True
@@ -87,16 +85,16 @@ class Board:
                 for i in range(len(self.discard_pile.cards)):
                     if self.discard_pile.cards[i].is_clicked(mouse_pos):
                         self.player_human.hand.add_cards(self.discard_pile.get_card(self.discard_pile.cards[i], i))
-                        self.action = 'proceed'
+                        self.action = Actions.PROCEED.value
                         self.messenger.add_message('Click Continue to check possible melds', 2000)
                         self.update_board()
                         break
 
-            if self.action == 'proceed' and self.button_continue.is_clicked(mouse_pos):
+            if self.action == Actions.PROCEED.value and self.button_continue.is_clicked(mouse_pos):
                 mouse_pos = 0  # To not count this click twice for next action
-                self.action = 'meld'
+                self.action = Actions.MELD_COMBINATION.value
 
-            if self.action == 'meld':
+            if self.action == Actions.MELD_COMBINATION.value:
                 # Checking and rendering possible melds
                 seq, group = self.player_human.hand.get_melds()
                 if len(seq) or len(group):
@@ -104,7 +102,7 @@ class Board:
                     self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
                 else:
                     self.messenger.add_message('No melds are possible', 1500)
-                    self.action = 'meld_card'
+                    self.action = Actions.MELD_INDIVIDUAL.value
                     return True
 
                 # Check if meld is clicked and add it to player
@@ -120,12 +118,12 @@ class Board:
                     return True
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
-                    self.action = 'meld_card'
+                    self.action = Actions.MELD_COMBINATION.value
                     self.messenger.add_message('You can try to lay cards from your hand into any melds on the table',
                                                2000)
                     return True
 
-            if self.action == 'meld_card':
+            if self.action == Actions.MELD_INDIVIDUAL.value:
                 # Erasing temp melds
                 self.update_board(with_temp=False)
 
@@ -154,11 +152,11 @@ class Board:
                         return True
 
                 if self.button_continue.is_clicked(mouse_pos):
-                    self.action = 'discard'
+                    self.action = Actions.DISCARD.value
                     self.messenger.add_message('Discard a card', 1500)
                     return True
 
-            if self.action == 'discard':
+            if self.action == Actions.DISCARD.value:
                 for card in self.player_human.hand.cards:
                     if card.is_clicked(mouse_pos):
                         self.player_human.hand.discard(card)
@@ -166,31 +164,33 @@ class Board:
                         self.messenger.add_message('Wait your turn', 2000)
                         self.update_board()
                         self.turn = self.player_engine
-                        self.action = 'draw_card'
+                        self.action = Actions.DRAW.value
                         break
 
         if self.turn == self.player_engine:
             self.engine.update_data(self.get_board_data())
-            if self.action == 'draw_card':
-                if self.engine.get_draw_action() == 'draw_hidden':
+            if self.action == Actions.DRAW.value:
+                move = self.engine.get_draw_move()
+                if move['action'] == Actions.DRAW_HIDDEN.value:
+                    # Engine decides to draw from hidden pile
                     self.player_engine.hand.add_cards(self.deck.deal(1))
-                    self.action = 'meld'
-                    print('engine got card from hidden pile')
                     self.engine.update_data(self.get_board_data())
                     self.update_board()
-            if self.action == 'meld':
-                print('engine will check meld action...')
+                    print('engine got card from hidden deck...')
+                else:
+                    # Engine decides to draw from discard pile
+                    chosen_card_index = move['target']
+                    self.player_engine.hand.add_cards(self.discard_pile.get_card(None, int(chosen_card_index)))
+                    self.engine.update_data(self.get_board_data())
+                    self.update_board()
+                    print('engine got card from discard pile...')
 
-
-
-
+                self.action = Actions.MELD_COMBINATION.value
+            if self.action == Actions.MELD_COMBINATION.value:
+                print('engine is checking its melds...')
+                self.engine.get_meld_combinations_move()
 
         return True
-
-    def sort_hand(self):
-        self.player_human.hand.sort()
-        self.player_human.hand.pos = 0
-        self.render_cards()
 
     def render_cards(self):
         # Inserting hidden deck
@@ -216,6 +216,7 @@ class Board:
             self.player_engine.hand.pos += 25
 
         # Rendering human cards
+        self.player_human.hand.sort()
         self.player_human.hand.pos = 0
         for i in self.player_human.hand.cards:
             card = pygame.transform.scale(i.image, (int(card_width), int(card_height)))
@@ -232,12 +233,6 @@ class Board:
             self.discard_pile.pos += 25
 
     def render_buttons(self):
-        # Button to organize human cards
-        self.button_organize = Button(image=None, pos=(WIDTH - 275, HEIGHT - 50),
-                                      text_input="Organize", font=get_font(20), base_color="White",
-                                      hovering_color="Blue")
-        self.button_organize.update(self.screen)
-
         # Button to continue the flow
         self.button_continue = Button(image=None, pos=(WIDTH - 150, HEIGHT - 50),
                                       text_input="Continue", font=get_font(20), base_color="White",
@@ -333,6 +328,9 @@ class Board:
             width_counter = 0
 
     def get_board_data(self):
+        self.player_engine.hand.sort()
+        self.player_human.hand.sort()
+
         seen_cards = []
         all_cards = []
         for suit in SUITS:
@@ -346,14 +344,14 @@ class Board:
 
         engine_melds = []
         for meld in self.player_engine.melds:
-            for card in meld:
+            for card in meld.cards:
                 engine_melds.append(f'{card.value}{card.suit[0]}')
                 seen_cards.append(f'{card.value}{card.suit[0]}')
 
         human_melds = []
         for meld in self.player_human.melds:
-            for card in meld:
-                engine_melds.append(f'{card.value}{card.suit[0]}')
+            for card in meld.cards:
+                human_melds.append(f'{card.value}{card.suit[0]}')
                 seen_cards.append(f'{card.value}{card.suit[0]}')
 
         discard_pile = []

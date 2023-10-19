@@ -53,7 +53,6 @@ class Hand:
 
     def get_melds(self):
         # Saving current hand order and sorting to check melds
-        copy_cards = self.cards
         self.sort()
 
         sequences = []
@@ -65,7 +64,6 @@ class Hand:
                 if self.is_meld(comb):
                     sequences.append(comb)
 
-        self.cards = copy_cards
         return sequences, groups
 
     def meld(self, meld):
