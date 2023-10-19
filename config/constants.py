@@ -18,7 +18,7 @@ GREEN_TABLE = (0, 81, 44)
 FPS = 60
 
 # Cards
-SUITS = ['clubs', 'hearts', 'spades', 'diamonds']
+SUITS = ['c', 'h', 's', 'd']
 
 
 # Actions

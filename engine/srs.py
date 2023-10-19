@@ -38,7 +38,16 @@ class SRS:
         self.move['target'] = index_card
 
     def get_meld_combinations_move(self):
+        # Getting possible melds
         seqs, groups = self.data_helper.get_possible_melds()
+        all = seqs + groups
+        if not len(all):
+            return []
         print('ENGINE CARDS: ', self.data_helper.board_data['engine_cards'])
         print('melds: ', seqs, groups)
+
+        # TODO: Evaluate and select best melds...
+        return all[0]
+
+
 

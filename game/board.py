@@ -1,4 +1,4 @@
-import pygame, time, os, sys
+import pygame
 from config.constants import *
 from game.player import Player
 from game.card import Card
@@ -84,7 +84,7 @@ class Board:
                 # Player decides to draw a card/cards from discard pile
                 for i in range(len(self.discard_pile.cards)):
                     if self.discard_pile.cards[i].is_clicked(mouse_pos):
-                        self.player_human.hand.add_cards(self.discard_pile.get_card(self.discard_pile.cards[i], i))
+                        self.player_human.hand.add_cards(self.discard_pile.get_card(i))
                         self.action = Actions.PROCEED.value
                         self.messenger.add_message('Click Continue to check possible melds', 2000)
                         self.update_board()
@@ -180,7 +180,7 @@ class Board:
                 else:
                     # Engine decides to draw from discard pile
                     chosen_card_index = move['target']
-                    self.player_engine.hand.add_cards(self.discard_pile.get_card(None, int(chosen_card_index)))
+                    self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
                     self.engine.update_data(self.get_board_data())
                     self.update_board()
                     print('engine got card from discard pile...')
@@ -188,24 +188,32 @@ class Board:
                 self.action = Actions.MELD_COMBINATION.value
             if self.action == Actions.MELD_COMBINATION.value:
                 print('engine is checking its melds...')
-                self.engine.get_meld_combinations_move()
+                melds = self.engine.get_meld_combinations_move()
+                for meld in melds:
+                    meld_arr = []
+                    for card in meld:
+                        print('todo')
+                        # TODO: Create meld and then meld into hand...
+                        #
+                        # meld_arr.append()
+
+
 
         return True
 
     def render_cards(self):
         # Inserting hidden deck
         hidden_deck = pygame.image.load(f'assets/images/cards/back_side.png').convert()
-        hidden_deck_width = 686 * 0.15
-        hidden_deck_heigth = 976 * 0.15
-        hidden_deck = pygame.transform.scale(hidden_deck, (int(hidden_deck_width), int(hidden_deck_heigth)))
-        self.hidden_deck_rect = self.screen.blit(hidden_deck, (650, (HEIGHT / 2) - (hidden_deck_heigth / 2)))
+        hidden_deck_width = 172 * 0.55
+        hidden_deck_height = 244 * 0.55
+        hidden_deck = pygame.transform.scale(hidden_deck, (int(hidden_deck_width), int(hidden_deck_height)))
+        self.hidden_deck_rect = self.screen.blit(hidden_deck, (650, (HEIGHT / 2) - (hidden_deck_height / 2)))
 
         # Setting normal card sizes
-        card_width = 500 * 0.204
-        card_height = 726 * 0.204
-        hidden_deck_heigth = 976 * 0.15
+        card_width = 125 * 0.55
+        card_height = 182 * 0.55
 
-        # TODO: Center hand cards automatically accroding to width... len(cards)*25 = width..
+        # TODO: Center hand cards automatically according to width... len(cards)*25 = width..
         # Rendering engine cards
         self.player_engine.hand.pos = 0
         hidden_img = pygame.image.load(f'assets/images/cards/back_side.png').convert()
@@ -228,7 +236,7 @@ class Board:
         self.discard_pile.pos = 0
         for i in self.discard_pile.cards:
             card = pygame.transform.scale(i.image, (int(card_width), int(card_height)))
-            card_rect = self.screen.blit(card, (800 + self.discard_pile.pos, (HEIGHT / 2) - (hidden_deck_heigth / 2)))
+            card_rect = self.screen.blit(card, (800 + self.discard_pile.pos, (HEIGHT / 2) - (hidden_deck_height / 2)))
             i.set_rect(card_rect)
             self.discard_pile.pos += 25
 
@@ -335,29 +343,29 @@ class Board:
         all_cards = []
         for suit in SUITS:
             for value in range(1, 14):
-                all_cards.append(f'{value}{suit[0]}')
+                all_cards.append(f'{value}{suit}')
 
         engine_cards = []
         for card in self.player_engine.hand.cards:
-            engine_cards.append(f'{card.value}{card.suit[0]}')
-            seen_cards.append(f'{card.value}{card.suit[0]}')
+            engine_cards.append(f'{card.value}{card.suit}')
+            seen_cards.append(f'{card.value}{card.suit}')
 
         engine_melds = []
         for meld in self.player_engine.melds:
             for card in meld.cards:
-                engine_melds.append(f'{card.value}{card.suit[0]}')
-                seen_cards.append(f'{card.value}{card.suit[0]}')
+                engine_melds.append(f'{card.value}{card.suit}')
+                seen_cards.append(f'{card.value}{card.suit}')
 
         human_melds = []
         for meld in self.player_human.melds:
             for card in meld.cards:
-                human_melds.append(f'{card.value}{card.suit[0]}')
-                seen_cards.append(f'{card.value}{card.suit[0]}')
+                human_melds.append(f'{card.value}{card.suit}')
+                seen_cards.append(f'{card.value}{card.suit}')
 
         discard_pile = []
         for card in self.discard_pile.cards:
-            discard_pile.append(f'{card.value}{card.suit[0]}')
-            seen_cards.append(f'{card.value}{card.suit[0]}')
+            discard_pile.append(f'{card.value}{card.suit}')
+            seen_cards.append(f'{card.value}{card.suit}')
 
         unseen_cards = [card for card in all_cards if card not in seen_cards]
 

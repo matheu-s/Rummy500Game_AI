@@ -29,19 +29,19 @@ class Hand:
 
     def sort(self):
         cards_dict = {
-            'spades': [],
-            'hearts': [],
-            'clubs': [],
-            'diamonds': []
+            's': [],
+            'h': [],
+            'c': [],
+            'd': []
         }
 
         for i in self.cards:
             cards_dict[i.suit].append(int(i.value))
 
-        cards_dict['spades'].sort()
-        cards_dict['hearts'].sort()
-        cards_dict['clubs'].sort()
-        cards_dict['diamonds'].sort()
+        cards_dict['s'].sort()
+        cards_dict['h'].sort()
+        cards_dict['c'].sort()
+        cards_dict['d'].sort()
 
         self.cards = []
         for suit in cards_dict:
