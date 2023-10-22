@@ -27,6 +27,15 @@ class Hand:
         self.cards.remove(card)
         self.pos -= 25
 
+    def remove_card(self, card):
+        # Melded cards
+
+        for own_card in self.cards:
+            if card.suit == own_card.suit and card.value == own_card.value:
+                self.cards.remove(own_card)
+                self.pos -= 25
+
+
     def sort(self):
         cards_dict = {
             's': [],
@@ -52,7 +61,11 @@ class Hand:
         return self.cards
 
     def get_melds(self):
-        # Saving current hand order and sorting to check melds
+        dict_meld = {
+            'group': [],
+            'seq': []
+        }
+
         self.sort()
 
         sequences = []
@@ -63,8 +76,10 @@ class Hand:
                 comb = list(comb)
                 if self.is_meld(comb):
                     sequences.append(comb)
+        dict_meld['group'] = groups
+        dict_meld['seq'] = sequences
 
-        return sequences, groups
+        return dict_meld
 
     def meld(self, meld):
         for card in meld.cards:

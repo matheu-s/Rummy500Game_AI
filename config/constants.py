@@ -1,7 +1,7 @@
 from enum import Enum
 
 # Main screen size
-WIDTH, HEIGHT = (1600 / 1.2), (900 / 1.2)
+WIDTH, HEIGHT = 1600, 900
 
 # Colors
 GREEN = (127, 166, 80)
@@ -23,11 +23,14 @@ SUITS = ['c', 'h', 's', 'd']
 
 # Actions
 class Actions(Enum):
-    DRAW = 'draw_card'
-    DRAW_HIDDEN = 'draw_hidden'
-    DRAW_DISCARD = 'draw_discard'
-    MELD_COMBINATION = 'meld'
-    MELD_INDIVIDUAL = 'meld_card'
-    DISCARD = 'discard'
-    PROCEED = 'proceed'
+    DRAW = '1'
+    DRAW_HIDDEN = '2'
+    DRAW_DISCARD = '3'
+    MELD_COMBINATION = '4'
+    CHOOSE_INDIVIDUAL_CARD = '5'
+    CHOOSE_INDIVIDUAL_MELD = '6'
+    DISCARD = '7'
+    PROCEED = '8'
+    MELD_INDIVIDUAL = '9'
+
 

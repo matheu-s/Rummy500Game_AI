@@ -13,7 +13,7 @@ class Card:
         self.suit = suit
         self.image = pygame.image.load(f'assets/images/cards/{value}_{suit}.png').convert()
         self.rect = None
-        if self.value > 10:
+        if int(self.value) > 10:
             self.points = 10
         else:
             self.points = 5

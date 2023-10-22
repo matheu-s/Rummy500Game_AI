@@ -96,13 +96,13 @@ class Board:
 
             if self.action == Actions.MELD_COMBINATION.value:
                 # Checking and rendering possible melds
-                seq, group = self.player_human.hand.get_melds()
-                if len(seq) or len(group):
+                melds = self.player_human.hand.get_melds()
+                if len(melds['seq']) or len(melds['group']):
                     # self.update_board(with_temp=True)
                     self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
                 else:
                     self.messenger.add_message('No melds are possible', 1500)
-                    self.action = Actions.MELD_INDIVIDUAL.value
+                    self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
                     return True
 
                 # Check if meld is clicked and add it to player
@@ -118,12 +118,12 @@ class Board:
                     return True
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
-                    self.action = Actions.MELD_COMBINATION.value
+                    self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
                     self.messenger.add_message('You can try to lay cards from your hand into any melds on the table',
                                                2000)
                     return True
 
-            if self.action == Actions.MELD_INDIVIDUAL.value:
+            if self.action == Actions.CHOOSE_INDIVIDUAL_CARD.value:
                 # Erasing temp melds
                 self.update_board(with_temp=False)
 
@@ -131,14 +131,16 @@ class Board:
                     if card.is_clicked(mouse_pos):
                         self.temp_chosen_card = card
                         self.messenger.add_message(f'Choose a meld to lay the {card.value} of {card.suit}.', 2000)
+                        self.action = Actions.CHOOSE_INDIVIDUAL_MELD.value
                         return True
 
+            if self.action == Actions.CHOOSE_INDIVIDUAL_MELD.value:
                 for meld in self.player_human.melds:
                     if meld.is_clicked(mouse_pos) \
                             and (self.player_human.hand.is_meld(meld.cards + [self.temp_chosen_card])
                                  or self.player_human.hand.is_meld([self.temp_chosen_card] + meld.cards)):
                         meld.add_card(self.temp_chosen_card)
-                        self.player_human.hand.discard(self.temp_chosen_card)
+                        self.player_human.hand.remove_card(self.temp_chosen_card)
                         self.update_board()
                         return True
 
@@ -147,7 +149,7 @@ class Board:
                             and (self.player_engine.hand.is_meld(meld.cards + [self.temp_chosen_card])
                                  or self.player_engine.hand.is_meld([self.temp_chosen_card] + meld.cards)):
                         meld.add_card(self.temp_chosen_card)
-                        self.player_engine.hand.discard(self.temp_chosen_card)
+                        self.player_engine.hand.remove_card(self.temp_chosen_card)
                         self.update_board()
                         return True
 
@@ -168,36 +170,7 @@ class Board:
                         break
 
         if self.turn == self.player_engine:
-            self.engine.update_data(self.get_board_data())
-            if self.action == Actions.DRAW.value:
-                move = self.engine.get_draw_move()
-                if move['action'] == Actions.DRAW_HIDDEN.value:
-                    # Engine decides to draw from hidden pile
-                    self.player_engine.hand.add_cards(self.deck.deal(1))
-                    self.engine.update_data(self.get_board_data())
-                    self.update_board()
-                    print('engine got card from hidden deck...')
-                else:
-                    # Engine decides to draw from discard pile
-                    chosen_card_index = move['target']
-                    self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
-                    self.engine.update_data(self.get_board_data())
-                    self.update_board()
-                    print('engine got card from discard pile...')
-
-                self.action = Actions.MELD_COMBINATION.value
-            if self.action == Actions.MELD_COMBINATION.value:
-                print('engine is checking its melds...')
-                melds = self.engine.get_meld_combinations_move()
-                for meld in melds:
-                    meld_arr = []
-                    for card in meld:
-                        print('todo')
-                        # TODO: Create meld and then meld into hand...
-                        #
-                        # meld_arr.append()
-
-
+            self.engine_play()
 
         return True
 
@@ -274,7 +247,7 @@ class Board:
         for meld in self.player_engine.melds:
             for card in meld.cards:
                 card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
-                card_rect = self.screen.blit(card_display, 150 + width_counter, 40 + height_counter)
+                card_rect = self.screen.blit(card_display, (150 + width_counter, 40 + height_counter))
                 card.set_rect(card_rect)
                 width_counter += 20
             height_counter += 150
@@ -308,32 +281,20 @@ class Board:
         width_counter = 0
         height_counter = 0
 
-        groups, seqs = self.player_human.hand.get_melds()
-        for meld in groups:
-            meld_cards = []
-            for card in meld:
-                new_card = Card(card.value, card.suit)
-                card_display = pygame.transform.scale(new_card.image, (int(card_width), int(card_height)))
-                card_rect = self.screen.blit(card_display, (100 + width_counter, 20 + height_counter))
-                new_card.set_rect(card_rect)
-                meld_cards.append(new_card)
-                width_counter += 20
-            self.temp_melds.append(Meld(meld_cards, 'group'))
-            height_counter += 150
-            width_counter = 0
-
-        for meld in seqs:
-            meld_cards = []
-            for card in meld:
-                new_card = Card(card.value, card.suit)
-                card_display = pygame.transform.scale(new_card.image, (int(card_width), int(card_height)))
-                card_rect = self.screen.blit(card_display, (100 + width_counter, 20 + height_counter))
-                new_card.set_rect(card_rect)
-                meld_cards.append(new_card)
-                width_counter += 20
-            self.temp_melds.append(Meld(meld_cards, 'seq'))
-            height_counter += 150
-            width_counter = 0
+        melds = self.player_human.hand.get_melds()
+        for key in melds:
+            for meld in melds[key]:
+                meld_cards = []
+                for card in meld:
+                    new_card = Card(card.value, card.suit)
+                    card_display = pygame.transform.scale(new_card.image, (int(card_width), int(card_height)))
+                    card_rect = self.screen.blit(card_display, (100 + width_counter, 20 + height_counter))
+                    new_card.set_rect(card_rect)
+                    meld_cards.append(new_card)
+                    width_counter += 20
+                self.temp_melds.append(Meld(meld_cards, key))
+                height_counter += 150
+                width_counter = 0
 
     def get_board_data(self):
         self.player_engine.hand.sort()
@@ -383,3 +344,49 @@ class Board:
         }
 
         return board_data
+
+    def engine_play(self):
+        self.engine.update_data(self.get_board_data())
+        if self.action == Actions.DRAW.value:
+            move = self.engine.get_draw_move()
+            if move['action'] == Actions.DRAW_HIDDEN.value:
+                # Engine decides to draw from hidden pile
+                self.player_engine.hand.add_cards(self.deck.deal(1))
+                print('engine got card from hidden deck...')
+            else:
+                # Engine decides to draw from discard pile
+                chosen_card_index = move['target']
+                self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
+                print('engine got card from discard pile...')
+
+            self.action = Actions.MELD_COMBINATION.value
+            self.engine.update_data(self.get_board_data())
+            self.update_board()
+
+        if self.action == Actions.MELD_COMBINATION.value:
+            print('engine is checking its melds...')
+            melds = self.engine.get_meld_combinations_move()
+            for meld in melds:
+                cards_arr = []
+                print('meld: ', meld)
+                for card in meld:
+                    print('card here: ', card)
+                    card_created = Card(card[:-1], card[-1:])
+                    cards_arr.append(card_created)
+
+                # TODO: remove 'seq' always and set correct meld type
+                # transform found melds into dict? seq: [], group: [], also for human hand later
+                # to avoid double iter?
+                meld = Meld(cards_arr, 'seq')
+                self.player_engine.hand.meld(meld)
+                self.player_engine.melds.append(meld)
+            self.action = Actions.MELD_INDIVIDUAL.value
+            self.engine.update_data(self.get_board_data())
+            self.update_board()
+
+        if self.action == Actions.MELD_INDIVIDUAL.value:
+            # TODO: Check individual melds
+            print('checking individual melds..')
+
+
+        return True
