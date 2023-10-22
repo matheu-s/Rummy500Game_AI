@@ -10,8 +10,8 @@ class Node:
         self.ancestor = ancestor
         self.descendants = []
 
-        print('in node.. my state is: ')
-        print(self.state)
+        # print('in node.. my state is: ')
+        # print(self.state)
 
 
 

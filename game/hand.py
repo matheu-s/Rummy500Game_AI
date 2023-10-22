@@ -93,7 +93,7 @@ class Hand:
             for ind in range(1, len(cards2)):
                 if cards2[ind - 1].suit != cards2[ind].suit:
                     return False
-                if cards2[ind - 1].value != cards2[ind].value - 1:
+                if cards2[ind - 1].value != int(cards2[ind].value) - 1:
                     return False
             return True
 

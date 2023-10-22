@@ -134,6 +134,11 @@ class Board:
                         self.action = Actions.CHOOSE_INDIVIDUAL_MELD.value
                         return True
 
+                if self.button_continue.is_clicked(mouse_pos):
+                    self.action = Actions.DISCARD.value
+                    self.messenger.add_message('Discard a card', 1500)
+                    return True
+
             if self.action == Actions.CHOOSE_INDIVIDUAL_MELD.value:
                 for meld in self.player_human.melds:
                     if meld.is_clicked(mouse_pos) \
@@ -148,8 +153,9 @@ class Board:
                     if meld.is_clicked(mouse_pos) \
                             and (self.player_engine.hand.is_meld(meld.cards + [self.temp_chosen_card])
                                  or self.player_engine.hand.is_meld([self.temp_chosen_card] + meld.cards)):
-                        meld.add_card(self.temp_chosen_card)
-                        self.player_engine.hand.remove_card(self.temp_chosen_card)
+                        meld.add_card(self.temp_chosen_card, self.temp_chosen_card.value)
+                        self.player_human.hand.remove_card(self.temp_chosen_card)
+                        self.player_human.add_indiv_points(self.temp_chosen_card.value)
                         self.update_board()
                         return True
 
@@ -348,45 +354,96 @@ class Board:
     def engine_play(self):
         self.engine.update_data(self.get_board_data())
         if self.action == Actions.DRAW.value:
+            # Drawing card action
             move = self.engine.get_draw_move()
             if move['action'] == Actions.DRAW_HIDDEN.value:
                 # Engine decides to draw from hidden pile
                 self.player_engine.hand.add_cards(self.deck.deal(1))
-                print('engine got card from hidden deck...')
             else:
                 # Engine decides to draw from discard pile
                 chosen_card_index = move['target']
                 self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
-                print('engine got card from discard pile...')
 
             self.action = Actions.MELD_COMBINATION.value
             self.engine.update_data(self.get_board_data())
             self.update_board()
 
         if self.action == Actions.MELD_COMBINATION.value:
-            print('engine is checking its melds...')
+            # Laying melds
             melds = self.engine.get_meld_combinations_move()
-            for meld in melds:
-                cards_arr = []
-                print('meld: ', meld)
-                for card in meld:
-                    print('card here: ', card)
-                    card_created = Card(card[:-1], card[-1:])
-                    cards_arr.append(card_created)
-
-                # TODO: remove 'seq' always and set correct meld type
-                # transform found melds into dict? seq: [], group: [], also for human hand later
-                # to avoid double iter?
-                meld = Meld(cards_arr, 'seq')
-                self.player_engine.hand.meld(meld)
-                self.player_engine.melds.append(meld)
+            for key in melds:
+                for meld in melds[key]:
+                    cards_arr = []
+                    for card in meld:
+                        card_created = Card(int(card[:-1]), card[-1:])
+                        cards_arr.append(card_created)
+                    meld = Meld(cards_arr, key)
+                    self.player_engine.hand.meld(meld)
+                    self.player_engine.melds.append(meld)
             self.action = Actions.MELD_INDIVIDUAL.value
             self.engine.update_data(self.get_board_data())
             self.update_board()
 
         if self.action == Actions.MELD_INDIVIDUAL.value:
-            # TODO: Check individual melds
-            print('checking individual melds..')
+            # Laying individual cards into existing melds
+
+            for card in self.player_engine.hand.cards:
+                melded = False
+                for meld in self.player_engine.melds:
+                    if self.player_engine.hand.is_meld(meld.cards + [card]):
+                        meld.add_card(card)
+                        self.player_engine.hand.remove_card(card)
+                        melded = True
+                        break
+                    if self.player_engine.hand.is_meld([card] + meld.cards):
+                        meld.add_card(card)
+                        self.player_engine.hand.remove_card(card)
+                        melded = True
+                        break
+
+                if melded:
+                    continue
+
+                for meld2 in self.player_human.melds:
+                    if self.player_engine.hand.is_meld(meld2.cards + [card]):
+                        meld2.add_card(card, card.value)
+                        self.player_engine.hand.remove_card(card)
+                        self.player_engine.add_indiv_points(card.value)
+                        break
+                    if self.player_engine.hand.is_meld([card] + meld2.cards):
+                        meld2.add_card(card, card.value)
+                        self.player_engine.hand.remove_card(card)
+                        self.player_engine.add_indiv_points(card.value)
+                        break
+
+            self.update_board()
+            self.engine.update_data(self.get_board_data())
+            self.action = Actions.DISCARD.value
+
+        if self.action == Actions.DISCARD.value:
+            # Discarding
+            discard_card = self.engine.get_discard_move()['target']
+            for card in self.player_engine.hand.cards:
+                if discard_card[-1:] == card.value and discard_card[:-1] == card.suit:
+                    self.player_engine.hand.discard(card)
+                    self.discard_pile.add_card(card)
+                    break
+
+            # Setting turn back to human
+            self.turn = self.player_human
+            self.action = Actions.DRAW.value
+            self.engine.update_data(self.get_board_data())
+            self.update_board()
+            return
+
+
+
+
+
+
+
+
+
 
 
         return True

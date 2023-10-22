@@ -14,6 +14,8 @@ class SRS:
         }
 
     def update_data(self, data):
+        """" Updates Helper class data\""""
+
         self.data_helper.set_board_data(data)
 
     def get_the_best_move(self):
@@ -23,6 +25,8 @@ class SRS:
         return self.move
 
     def get_draw_move(self):
+        """" Evaluates and chooses where to pick the card from\""""
+
         # Draw from hidden or discard pile
         # self.move['action'] = 'draw_hidden'
         # self.move['target'] = ''
@@ -31,26 +35,42 @@ class SRS:
         return self.move
 
     def get_discard_move(self):
-        # Choose which card to discard
+        """" Evaluates and choose the card to discard\""""
 
-        index_card = 5
+        # TODO: Add logic to discard action
         self.move['action'] = Actions.DISCARD.value
-        self.move['target'] = index_card
+        self.move['target'] = self.data_helper.board_data['engine_cards'][0]
+        return self.move
 
     def get_meld_combinations_move(self):
-        # Getting possible melds
-        meld_type = None
+        """" Generates, evaluates and chooses the melds\""""
+
+        dict_meld = {
+            'group': [],
+            'seq': []
+        }
         seqs, groups = self.data_helper.get_possible_melds()
         if not len(seqs) and not len(groups):
             print('no melds')
             return []
-        print('ENGINE CARDS: ', self.data_helper.board_data['engine_cards'])
-        print('melds: ', seqs, groups)
-
+        if len(groups):
+            dict_meld['group'] = [groups[0]] # TODO: remove [0]
+        if len(seqs):
+            dict_meld['seq'] = [seqs[0]] # TODO: remove [0]
         # TODO: Evaluate and select best melds...
-        allcards = seqs + groups
-        print('returned: ', allcards[0])
-        return [allcards[0]]
+        print('returned: ', dict_meld)
+        return dict_meld
+
+    def get_individual_lays(self):
+        """" Chooses individual card lays into existing melds\""""
+
+        # Until the moment, simply laying cards, preferring own melds. No further evaluation as changes are minors
+        return self.data_helper.get_possible_lays()
+
+
+
+
+
 
 
 
