@@ -1,5 +1,6 @@
 from itertools import combinations
 from game.card import Card
+from game.meld import Meld
 
 
 class Hand:
@@ -26,21 +27,30 @@ class Hand:
         self.cards.remove(card)
         self.pos -= 25
 
+    def remove_card(self, card):
+        # Melded cards
+
+        for own_card in self.cards:
+            if card.suit == own_card.suit and card.value == own_card.value:
+                self.cards.remove(own_card)
+                self.pos -= 25
+
+
     def sort(self):
         cards_dict = {
-            'spades': [],
-            'hearts': [],
-            'clubs': [],
-            'diamonds': []
+            's': [],
+            'h': [],
+            'c': [],
+            'd': []
         }
 
         for i in self.cards:
             cards_dict[i.suit].append(int(i.value))
 
-        cards_dict['spades'].sort()
-        cards_dict['hearts'].sort()
-        cards_dict['clubs'].sort()
-        cards_dict['diamonds'].sort()
+        cards_dict['s'].sort()
+        cards_dict['h'].sort()
+        cards_dict['c'].sort()
+        cards_dict['d'].sort()
 
         self.cards = []
         for suit in cards_dict:
@@ -51,43 +61,46 @@ class Hand:
         return self.cards
 
     def get_melds(self):
-        # Saving current hand order and sorting to check melds
-        copy_cards = self.cards
+        dict_meld = {
+            'group': [],
+            'seq': []
+        }
+
         self.sort()
 
         sequences = []
         groups = []
-
-        def is_seq(cards):
-            for ind in range(1, len(cards)):
-                if cards[ind - 1].suit != cards[ind].suit:
-                    return False
-                if cards[ind - 1].value != cards[ind].value - 1:
-                    return False
-            return True
-
-        def is_group(cards):
-            for ind in range(1, len(cards)):
-                if cards[ind - 1].value != cards[ind].value:
-                    return False
-            return True
-
         # Checking possible sequences and groups
         for r in range(3, len(self.cards) + 1):
             for comb in combinations(self.cards, r):
                 comb = list(comb)
-                if is_seq(comb):
+                if self.is_meld(comb):
                     sequences.append(comb)
-                elif is_group(comb):
-                    groups.append(comb)
+        dict_meld['group'] = groups
+        dict_meld['seq'] = sequences
 
-        self.cards = copy_cards
-        return sequences, groups
+        return dict_meld
 
     def meld(self, meld):
-        for card in meld:
+        for card in meld.cards:
             for own_card in self.cards:
                 if card.suit == own_card.suit and card.value == own_card.value:
                     self.cards.remove(own_card)
                     self.pos -= 25
 
+    def is_meld(self, cards):
+        def is_seq(cards2):
+            for ind in range(1, len(cards2)):
+                if cards2[ind - 1].suit != cards2[ind].suit:
+                    return False
+                if cards2[ind - 1].value != int(cards2[ind].value) - 1:
+                    return False
+            return True
+
+        def is_group(cards2):
+            for ind in range(1, len(cards2)):
+                if cards2[ind - 1].value != cards2[ind].value:
+                    return False
+            return True
+
+        return is_seq(cards) or is_group(cards)

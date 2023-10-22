@@ -1,3 +1,5 @@
+from enum import Enum
+
 # Main screen size
 WIDTH, HEIGHT = 1600, 900
 
@@ -10,10 +12,25 @@ RED = (255, 0, 0)
 LIGHT_RED = (255, 109, 106)
 BLUE = (0, 0, 255)
 LIGHT_BLUE = (173, 216, 230)
-GREEN_TABLE = (0,81,44)
+GREEN_TABLE = (0, 81, 44)
 
 # General
-FPS = 120
+FPS = 60
 
-#Cards
-SUITS = ['clubs', 'hearts', 'spades', 'diamonds']
+# Cards
+SUITS = ['c', 'h', 's', 'd']
+
+
+# Actions
+class Actions(Enum):
+    DRAW = '1'
+    DRAW_HIDDEN = '2'
+    DRAW_DISCARD = '3'
+    MELD_COMBINATION = '4'
+    CHOOSE_INDIVIDUAL_CARD = '5'
+    CHOOSE_INDIVIDUAL_MELD = '6'
+    DISCARD = '7'
+    PROCEED = '8'
+    MELD_INDIVIDUAL = '9'
+
+

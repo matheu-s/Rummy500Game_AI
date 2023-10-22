@@ -5,11 +5,12 @@ from game.button import Button
 from game.board import Board
 
 pygame.init()
+pygame.event.set_allowed([pygame.MOUSEBUTTONDOWN, pygame.QUIT])
 
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 MESSENGER = Messages(SCREEN)
 pygame.display.set_caption("RUMMY 500")
-BG = pygame.image.load("assets/images/bg.jpg")
+BG = pygame.image.load("assets/images/bg.jpg").convert()
 
 
 def get_font(size):
@@ -70,11 +71,11 @@ def main_menu():
         MENU_TEXT = get_font(100).render("MAIN MENU", True, "#006400")
         MENU_RECT = MENU_TEXT.get_rect(center=(WIDTH / 2, 150))
 
-        PLAY_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 300),
+        PLAY_BUTTON = Button(image=pygame.image.load("assets/images/play.png").convert(), pos=(WIDTH / 2, 300),
                              text_input="PLAY", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-        OPTIONS_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 450),
+        OPTIONS_BUTTON = Button(image=pygame.image.load("assets/images/play.png").convert(), pos=(WIDTH / 2, 450),
                                 text_input="RULES", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-        QUIT_BUTTON = Button(image=pygame.image.load("assets/images/play.png"), pos=(WIDTH / 2, 600),
+        QUIT_BUTTON = Button(image=pygame.image.load("assets/images/play.png").convert(), pos=(WIDTH / 2, 600),
                              text_input="QUIT", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
