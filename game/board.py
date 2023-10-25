@@ -18,6 +18,8 @@ class Board:
     screen = None
     player_human = None
     player_engine = None
+    human_points_acc = None
+    engine_points_acc = None
     hidden_deck_rect = None
     discard_pile = None
     temp_melds = None
@@ -36,6 +38,8 @@ class Board:
         self.messenger = messenger
         self.player_human = Player(is_human=True)
         self.player_engine = Player(is_human=False)
+        self.human_points_acc = 0
+        self.engine_points_acc = 0
         self.deck = Deck()
         self.discard_pile = DiscardPile()
         self.temp_melds = []
@@ -69,6 +73,13 @@ class Board:
         # Organize and Back button can be used anytime
         if self.button_back.is_clicked(mouse_pos):
             return False
+
+        if self.is_game_finished():
+            self.render_winner()
+
+        if self.is_round_finished():
+            self.restart_round()
+            self.update_board()
 
         # Checking if player turn and action are corresponding to clicked object
         if self.turn == self.player_human:
@@ -261,8 +272,8 @@ class Board:
 
     def render_points(self):
         # Gathering points info
-        human_points = self.player_human.get_points()
-        engine_points = self.player_engine.get_points()
+        human_points = self.player_human.get_points() + self.human_points_acc
+        engine_points = self.player_engine.get_points() + self.engine_points_acc
 
         # Displaying points
         font = get_font(24)
@@ -436,14 +447,40 @@ class Board:
             self.update_board()
             return
 
-
-
-
-
-
-
-
-
-
-
         return True
+
+    def is_round_finished(self):
+        if len(self.player_human.hand.cards) == 0 or len(self.player_engine.hand.cards) == 0:
+            return True
+        return False
+
+    def is_game_finished(self):
+        if self.player_engine.get_points() + self.engine_points_acc > 499:
+            return True
+        if self.player_human.get_points() + self.human_points_acc > 499:
+            return True
+        return False
+
+    def restart_round(self):
+
+        # Restarting the deck
+        self.deck = Deck()
+        self.deck.shuffle()
+
+        # Restarting discard pile
+        self.discard_pile = DiscardPile()
+        self.discard_pile.add_card(self.deck.deal(1))
+
+        # Saving points and restarting players
+        self.human_points_acc += self.player_human.get_points()
+        self.engine_points_acc += self.player_engine.get_points()
+
+        self.player_human = Player(is_human=True)
+        self.player_human.set_hand(Hand(self.deck.deal(13)))
+
+        self.player_engine = Player(is_human=False)
+        self.player_engine.set_hand(Hand(self.deck.deal(13)))
+
+    def render_winner(self):
+        # TODO: Render winner screen
+        print('winner')
