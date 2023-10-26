@@ -450,18 +450,18 @@ class Board:
         return True
 
     def is_round_finished(self):
-        if len(self.player_human.hand.cards) == 0 or len(self.player_engine.hand.cards) == 0:
-            return True
-        return False
+        return len(self.player_human.hand.cards) == 0 \
+            or len(self.player_engine.hand.cards) == 0 \
+            or self.deck.length() == 0
 
     def is_game_finished(self):
-        if self.player_engine.get_points() + self.engine_points_acc > 499:
-            return True
-        if self.player_human.get_points() + self.human_points_acc > 499:
-            return True
-        return False
+        return self.player_engine.get_points() + self.engine_points_acc > 499 \
+            or self.player_human.get_points() + self.human_points_acc > 499
 
     def restart_round(self):
+        print('round restarted')
+        print('engine points: ', self.engine_points_acc)
+        print('human points: ', self.human_points_acc)
 
         # Restarting the deck
         self.deck = Deck()
@@ -474,6 +474,7 @@ class Board:
         # Saving points and restarting players
         self.human_points_acc += self.player_human.get_points()
         self.engine_points_acc += self.player_engine.get_points()
+        self.subtract_points()
 
         self.player_human = Player(is_human=True)
         self.player_human.set_hand(Hand(self.deck.deal(13)))
@@ -484,3 +485,26 @@ class Board:
     def render_winner(self):
         # TODO: Render winner screen
         print('winner')
+
+    def subtract_points(self):
+        """" Subtracts points from the cards present in hand at the end of the round\""""
+
+        engine_lost_points = 0
+        for card in self.player_engine.hand.cards:
+            if int(card.value) > 10:
+                engine_lost_points += 10
+                return
+            engine_lost_points += 5
+        self.engine_points_acc = self.engine_points_acc - engine_lost_points
+
+        human_lost_points = 0
+        for card in self.player_human.hand.cards:
+            if int(card.value) > 10:
+                human_lost_points += 10
+                return
+            human_lost_points += 5
+        self.human_points_acc = self.human_points_acc - human_lost_points
+
+
+
+

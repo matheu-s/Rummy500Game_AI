@@ -28,10 +28,10 @@ class SRS:
         """" Evaluates and chooses where to pick the card from\""""
 
         # Draw from hidden or discard pile
-        # self.move['action'] = 'draw_hidden'
-        # self.move['target'] = ''
-        self.move['action'] = Actions.DRAW_DISCARD.value
-        self.move['target'] = 0
+        self.move['action'] = Actions.DRAW_HIDDEN.value
+        self.move['target'] = ''
+        # self.move['action'] = Actions.DRAW_DISCARD.value
+        # self.move['target'] = 0
         return self.move
 
     def get_discard_move(self):
