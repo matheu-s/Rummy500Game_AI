@@ -435,7 +435,7 @@ class Board:
             # Discarding
             discard_card = self.engine.get_discard_move()['target']
             for card in self.player_engine.hand.cards:
-                if discard_card[-1:] == card.value and discard_card[:-1] == card.suit:
+                if int(discard_card[:-1]) == card.value and discard_card[-1:] == card.suit:
                     self.player_engine.hand.discard(card)
                     self.discard_pile.add_card(card)
                     break
