@@ -198,6 +198,9 @@ class Board:
         hidden_deck_height = 244 * 0.55
         hidden_deck = pygame.transform.scale(hidden_deck, (int(hidden_deck_width), int(hidden_deck_height)))
         self.hidden_deck_rect = self.screen.blit(hidden_deck, (650, (HEIGHT / 2) - (hidden_deck_height / 2)))
+        font = get_font(24)
+        text_length_info = font.render(f'{self.deck.length()}', True, (255, 255, 255))
+        self.screen.blit(text_length_info, (600, (HEIGHT / 2) - (hidden_deck_height / 2)))
 
         # Setting normal card sizes
         card_width = 125 * 0.55
