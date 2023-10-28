@@ -1,6 +1,6 @@
 from itertools import combinations
-from game.card import Card
-from game.meld import Meld
+from game.components.card import Card
+from game.components.meld import Meld
 
 
 class Hand:

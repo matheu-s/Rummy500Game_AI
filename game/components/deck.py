@@ -1,7 +1,7 @@
 import random
 from itertools import combinations
 from config.constants import *
-from game.card import Card
+from game.components.card import Card
 
 
 class Deck:

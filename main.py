@@ -1,7 +1,7 @@
 import pygame, sys
 from config.constants import *
 from config.messages import Messages
-from game.button import Button
+from game.components.button import Button
 from game.board import Board
 
 pygame.init()
@@ -10,14 +10,13 @@ pygame.event.set_allowed([pygame.MOUSEBUTTONDOWN, pygame.QUIT])
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 MESSENGER = Messages(SCREEN)
 pygame.display.set_caption("RUMMY 500")
-BG = pygame.image.load("assets/images/bg.jpg").convert()
-
 
 def get_font(size):
     return pygame.font.Font("assets/fonts/montserrat.ttf", size)
 
 
 def play():
+    SCREEN.fill(GREEN_TABLE)
     SCREEN.fill(GREEN_TABLE)
 
     board = Board(screen=SCREEN, messenger=MESSENGER)
@@ -63,12 +62,11 @@ def main_menu():
     clock = pygame.time.Clock()
 
     while run:
-        clock.tick(FPS)
-        SCREEN.fill(BLACK)
-        SCREEN.blit(BG, (0, 0))
+        # clock.tick(FPS)
+        SCREEN.fill(GREEN_TABLE)
         MENU_MOUSE_POS = pygame.mouse.get_pos()
 
-        MENU_TEXT = get_font(100).render("MAIN MENU", True, "#006400")
+        MENU_TEXT = get_font(100).render("MAIN MENU", True, BLACK)
         MENU_RECT = MENU_TEXT.get_rect(center=(WIDTH / 2, 150))
 
         PLAY_BUTTON = Button(image=pygame.image.load("assets/images/play.png").convert(), pos=(WIDTH / 2, 300),

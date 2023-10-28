@@ -1,12 +1,13 @@
 import pygame
+from time import sleep
 from config.constants import *
-from game.player import Player
-from game.card import Card
-from game.deck import Deck
-from game.button import Button
-from game.hand import Hand
-from game.meld import Meld
-from game.discard_pile import DiscardPile
+from game.components.player import Player
+from game.components.card import Card
+from game.components.deck import Deck
+from game.components.button import Button
+from game.components.hand import Hand
+from game.components.meld import Meld
+from game.components.discard_pile import DiscardPile
 from engine.srs import SRS
 
 
@@ -18,6 +19,8 @@ class Board:
     screen = None
     player_human = None
     player_engine = None
+    human_points_acc = None
+    engine_points_acc = None
     hidden_deck_rect = None
     discard_pile = None
     temp_melds = None
@@ -36,6 +39,8 @@ class Board:
         self.messenger = messenger
         self.player_human = Player(is_human=True)
         self.player_engine = Player(is_human=False)
+        self.human_points_acc = 0
+        self.engine_points_acc = 0
         self.deck = Deck()
         self.discard_pile = DiscardPile()
         self.temp_melds = []
@@ -70,11 +75,21 @@ class Board:
         if self.button_back.is_clicked(mouse_pos):
             return False
 
+        if self.is_game_finished():
+            self.render_winner()
+
+        if self.is_round_finished():
+            self.restart_round()
+            self.update_board()
+
         # Checking if player turn and action are corresponding to clicked object
         if self.turn == self.player_human:
             if self.action == Actions.DRAW.value:
                 # Player decides to draw a card from hidden deck
                 if self.hidden_deck_rect.collidepoint(mouse_pos):
+                    if self.deck.length() == 0:
+                        self.restart_round()
+                        self.update_board()
                     self.player_human.hand.add_cards(self.deck.deal(1))
                     self.action = Actions.PROCEED.value
                     self.messenger.add_message('Click Continue to check possible melds', 2000)
@@ -160,8 +175,9 @@ class Board:
                         return True
 
                 if self.button_continue.is_clicked(mouse_pos):
-                    self.action = Actions.DISCARD.value
-                    self.messenger.add_message('Discard a card', 1500)
+                    self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
+                    self.messenger.add_message('You can try to lay cards from your hand into any melds on the table',
+                                               2000)
                     return True
 
             if self.action == Actions.DISCARD.value:
@@ -186,7 +202,10 @@ class Board:
         hidden_deck_width = 172 * 0.55
         hidden_deck_height = 244 * 0.55
         hidden_deck = pygame.transform.scale(hidden_deck, (int(hidden_deck_width), int(hidden_deck_height)))
-        self.hidden_deck_rect = self.screen.blit(hidden_deck, (650, (HEIGHT / 2) - (hidden_deck_height / 2)))
+        self.hidden_deck_rect = self.screen.blit(hidden_deck, (500, (HEIGHT / 2) - (hidden_deck_height / 2)))
+        font = get_font(24)
+        text_length_info = font.render(f'{self.deck.length()}', True, (255, 255, 255))
+        self.screen.blit(text_length_info, (600, (HEIGHT / 2) - (hidden_deck_height / 2)))
 
         # Setting normal card sizes
         card_width = 125 * 0.55
@@ -213,11 +232,16 @@ class Board:
 
         # Render the discard pile cards
         self.discard_pile.pos = 0
+        height_level = 0
         for i in self.discard_pile.cards:
             card = pygame.transform.scale(i.image, (int(card_width), int(card_height)))
-            card_rect = self.screen.blit(card, (800 + self.discard_pile.pos, (HEIGHT / 2) - (hidden_deck_height / 2)))
+            card_rect = self.screen.blit(card, (650 + self.discard_pile.pos, (HEIGHT / 2)
+                                                - (hidden_deck_height / 2) + height_level))
             i.set_rect(card_rect)
             self.discard_pile.pos += 25
+            if self.discard_pile.pos > 250 and height_level == 0:
+                height_level = 120
+                self.discard_pile.pos = 0
 
     def render_buttons(self):
         # Button to continue the flow
@@ -232,8 +256,8 @@ class Board:
         self.button_back.update(self.screen)
 
     def render_melds(self):
-        card_width = 500 * 0.150
-        card_height = 726 * 0.150
+        card_width = 500 * 0.10
+        card_height = 726 * 0.10
 
         # Rendering human melds
         width_counter = 0
@@ -243,8 +267,8 @@ class Board:
                 card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
                 card_rect = self.screen.blit(card_display, ((WIDTH - 350) + width_counter, 40 + height_counter))
                 card.set_rect(card_rect)
-                width_counter += 20
-            height_counter += 150
+                width_counter += 17
+            height_counter += card_height + 20
             width_counter = 0
 
         # Rendering engine melds
@@ -255,14 +279,14 @@ class Board:
                 card_display = pygame.transform.scale(card.image, (int(card_width), int(card_height)))
                 card_rect = self.screen.blit(card_display, (150 + width_counter, 40 + height_counter))
                 card.set_rect(card_rect)
-                width_counter += 20
-            height_counter += 150
+                width_counter += 17
+            height_counter += card_height + 20
             width_counter = 0
 
     def render_points(self):
         # Gathering points info
-        human_points = self.player_human.get_points()
-        engine_points = self.player_engine.get_points()
+        human_points = self.player_human.get_points() + self.human_points_acc
+        engine_points = self.player_engine.get_points() + self.engine_points_acc
 
         # Displaying points
         font = get_font(24)
@@ -363,6 +387,7 @@ class Board:
                 # Engine decides to draw from discard pile
                 chosen_card_index = move['target']
                 self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
+                print('got from discard pile!')
 
             self.action = Actions.MELD_COMBINATION.value
             self.engine.update_data(self.get_board_data())
@@ -424,7 +449,7 @@ class Board:
             # Discarding
             discard_card = self.engine.get_discard_move()['target']
             for card in self.player_engine.hand.cards:
-                if discard_card[-1:] == card.value and discard_card[:-1] == card.suit:
+                if int(discard_card[:-1]) == card.value and discard_card[-1:] == card.suit:
                     self.player_engine.hand.discard(card)
                     self.discard_pile.add_card(card)
                     break
@@ -436,14 +461,59 @@ class Board:
             self.update_board()
             return
 
-
-
-
-
-
-
-
-
-
-
         return True
+
+    def is_round_finished(self):
+        return len(self.player_human.hand.cards) == 0 \
+            or len(self.player_engine.hand.cards) == 0
+
+    def is_game_finished(self):
+        return self.player_engine.get_points() + self.engine_points_acc > 499 \
+            or self.player_human.get_points() + self.human_points_acc > 499
+
+    def restart_round(self):
+        # Restarting the deck
+        self.deck = Deck()
+        self.deck.shuffle()
+
+        # Restarting discard pile
+        self.discard_pile = DiscardPile()
+        self.discard_pile.add_card(self.deck.deal(1))
+
+        # Saving points and restarting players
+        self.human_points_acc += self.player_human.get_points()
+        self.engine_points_acc += self.player_engine.get_points()
+        self.subtract_points()
+        print('round restarted')
+        print('engine points: ', self.engine_points_acc)
+        print('human points: ', self.human_points_acc)
+        sleep(20) # take to check board and screenshot before restarting
+
+        self.player_human = Player(is_human=True)
+        self.player_human.set_hand(Hand(self.deck.deal(13)))
+
+        self.player_engine = Player(is_human=False)
+        self.player_engine.set_hand(Hand(self.deck.deal(13)))
+
+    def render_winner(self):
+        # TODO: Render winner screen
+        print('winner')
+
+    def subtract_points(self):
+        """" Subtracts points from the cards present in hand at the end of the round\""""
+
+        engine_lost_points = 0
+        for card in self.player_engine.hand.cards:
+            if int(card.value) > 10:
+                engine_lost_points += 10
+                return
+            engine_lost_points += 5
+        self.engine_points_acc = self.engine_points_acc - engine_lost_points
+
+        human_lost_points = 0
+        for card in self.player_human.hand.cards:
+            if int(card.value) > 10:
+                human_lost_points += 10
+                return
+            human_lost_points += 5
+        self.human_points_acc = self.human_points_acc - human_lost_points

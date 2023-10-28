@@ -1,5 +1,5 @@
 import pygame
-from game.hand import Hand
+from game.components.hand import Hand
 
 
 class Player:
