@@ -1,4 +1,4 @@
-from game.card import Card
+from game.components.card import Card
 
 
 class DiscardPile:

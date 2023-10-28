@@ -1,7 +1,7 @@
 from engine.helper.data import Data
 from config.constants import Actions
 
-
+# Souza's Rummy Solver
 class SRS:
     data_helper = None
     move = None
@@ -27,11 +27,15 @@ class SRS:
     def get_draw_move(self):
         """" Evaluates and chooses where to pick the card from\""""
 
-        # Draw from hidden or discard pile
+        # Preference for discard pile, the deepest possible, otherwise... from hidden
+        possible_discard_picks = self.data_helper.get_possible_discard_picks()
+        if len(possible_discard_picks):
+            print('getting from discard pile,')
+            self.move['action'] = Actions.DRAW_DISCARD.value
+            self.move['target'] = possible_discard_picks[0]
+            return self.move
+
         self.move['action'] = Actions.DRAW_HIDDEN.value
-        self.move['target'] = ''
-        # self.move['action'] = Actions.DRAW_DISCARD.value
-        # self.move['target'] = 0
         return self.move
 
     def get_discard_move(self):
@@ -39,7 +43,7 @@ class SRS:
 
         # TODO: Add logic to discard action
         self.move['action'] = Actions.DISCARD.value
-        self.move['target'] = self.data_helper.board_data['engine_cards'][0]
+        self.move['target'] = self.data_helper.engine_cards[0]
         return self.move
 
     def get_meld_combinations_move(self):
