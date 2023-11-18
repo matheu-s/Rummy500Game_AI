@@ -1,6 +1,7 @@
 from engine.helper.data import Data
 from config.constants import Actions
 
+
 # Souza's Rummy Solver
 class SRS:
     data_helper = None
@@ -50,19 +51,23 @@ class SRS:
         """" Generates, evaluates and chooses the melds\""""
 
         dict_meld = {
-            'group': [],
-            'seq': []
+            'melds': []
         }
-        seqs, groups = self.data_helper.get_possible_melds()
-        if not len(seqs) and not len(groups):
-            print('no melds')
-            return []
-        if len(groups):
-            dict_meld['group'] = [groups[0]] # TODO: remove [0]
-        if len(seqs):
-            dict_meld['seq'] = [seqs[0]] # TODO: remove [0]
-        # TODO: Evaluate and select best melds...
-        print('returned: ', dict_meld)
+
+        hand = self.data_helper.engine_cards
+
+        # Iterate until all melds are filtered
+        while len(self.data_helper.get_possible_melds(hand)) != 0:
+            melds = self.data_helper.get_possible_melds(hand)
+
+            # Getting the highest pointing meld and removing cards for next iteration
+            highest_score = 0
+            for meld in melds:
+                if self.data_helper.calculate_meld_points(meld) > highest_score:
+                    dict_meld['melds'].append(meld)
+                    for card in meld:
+                        hand.remove(card)
+
         return dict_meld
 
     def get_individual_lays(self):
@@ -70,11 +75,3 @@ class SRS:
 
         # Until the moment, simply laying cards, preferring own melds. No further evaluation as changes are minors
         return self.data_helper.get_possible_lays()
-
-
-
-
-
-
-
-

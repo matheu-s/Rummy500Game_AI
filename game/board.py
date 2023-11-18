@@ -112,14 +112,16 @@ class Board:
             if self.action == Actions.MELD_COMBINATION.value:
                 # Checking and rendering possible melds
                 melds = self.player_human.hand.get_melds()
-                if len(melds['seq']) or len(melds['group']):
-                    # self.update_board(with_temp=True)
-                    self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
-                else:
+                self.update_board(with_temp=True)
+
+                if not len(melds['seq']) or len(melds['group']):
                     self.messenger.add_message('No melds are possible', 1500)
                     self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
                     return True
 
+                if mouse_pos == 0:
+                    self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
+                    return True
                 # Check if meld is clicked and add it to player
                 for meld in self.temp_melds:
                     if meld.is_clicked(mouse_pos):
@@ -127,10 +129,6 @@ class Board:
                         self.player_human.melds.append(meld)
                         self.temp_melds.remove(meld)
 
-                self.update_board(with_temp=True)
-
-                if mouse_pos == 0:
-                    return True
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
                     self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value

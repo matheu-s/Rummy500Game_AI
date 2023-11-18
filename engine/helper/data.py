@@ -38,16 +38,16 @@ class Data:
 
         if not hand:
             hand = self.engine_cards
-        sequences = []
-        groups = []
+
+        melds = []
         # Checking possible sequences and groups
         for r in range(3, len(hand) + 1):
             for comb in combinations(hand, r):
                 comb = list(comb)
                 if self.is_meld(comb):
-                    sequences.append(comb)
+                    melds.append(comb)
 
-        return sequences, groups
+        return melds
 
     def is_meld(self, cards):
         """" Checks is provided combination is a meld \""""
@@ -109,8 +109,7 @@ class Data:
         picked = False
         for index in range(len(discard_pile_cards)):
             temp_hand = hand + discard_pile_cards[index-1:]
-            seqs, groups = self.get_possible_melds(temp_hand)
-            melds = seqs+groups
+            melds = self.get_possible_melds(temp_hand)
 
             for meld in melds:
                 if discard_pile_cards[index-1] in meld:
@@ -128,6 +127,18 @@ class Data:
 
         # TODO: Evaluates if picking from discard is ok, myb simulate if points worth for next 3 levels... usually yes
         # combine with BN to check if there isn't few cards in deck.. ?
+
+    def calculate_meld_points(self, meld):
+        """" Calculates points of a meld combination \""""
+
+        points = 0
+        for card in meld:
+            if int(card[:-1]) > 10:
+                points += 10
+                continue
+            points += 5
+
+        return points
 
 
 
