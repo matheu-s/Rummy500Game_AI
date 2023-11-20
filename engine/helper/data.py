@@ -49,24 +49,25 @@ class Data:
 
         return melds
 
+    def is_seq(self, cards):
+        for ind in range(1, len(cards)):
+            if cards[ind - 1][-1:] != cards[ind][-1:]:
+                return False
+            if int(cards[ind - 1][:-1]) != int(cards[ind][:-1]) - 1:
+                return False
+        return True
+
+    def is_group(self, cards):
+        for ind in range(1, len(cards)):
+            if cards[ind - 1][:-1] != cards[ind][:-1]:
+                return False
+        return True
+
+
     def is_meld(self, cards):
-        """" Checks is provided combination is a meld \""""
+        """" Checks if provided combination is a meld \""""
 
-        def is_seq(cards2):
-            for ind in range(1, len(cards2)):
-                if cards2[ind - 1][-1:] != cards2[ind][-1:]:
-                    return False
-                if int(cards2[ind - 1][:-1]) != int(cards2[ind][:-1]) - 1:
-                    return False
-            return True
-
-        def is_group(cards2):
-            for ind in range(1, len(cards2)):
-                if cards2[ind - 1][:-1] != cards2[ind][:-1]:
-                    return False
-            return True
-
-        return is_seq(cards) or is_group(cards)
+        return self.is_seq(cards) or self.is_group(cards)
 
     def get_possible_lays(self, hand=None):
         """" Checks possible individuals cards to lay into existing melds \""""
@@ -97,7 +98,7 @@ class Data:
         return melds
 
     def get_possible_discard_picks(self, discard_pile_cards=None, hand=None):
-        """" Checks possible picks from discard pile, returns indexes of possible cards \""""
+        """" Checks possible picks from discard pile, returns a list of dicts with index and mandatory melds \""""
 
         if not discard_pile_cards:
             discard_pile_cards = self.discard_pile_cards
@@ -108,17 +109,28 @@ class Data:
 
         picked = False
         for index in range(len(discard_pile_cards)):
-            temp_hand = hand + discard_pile_cards[index-1:]
+            temp_hand = hand + discard_pile_cards[index:]
+            print('picked: ', discard_pile_cards[index:])
+            print('temp hand: ', temp_hand)
             melds = self.get_possible_melds(temp_hand)
+            print('formed melds: ', melds)
 
             for meld in melds:
-                if discard_pile_cards[index-1] in meld:
-                    possible_picks.append(index-1)
+                if discard_pile_cards[index] in meld:
+                    print('picked card forms meld: ', discard_pile_cards[index], ' on ', meld)
+                    # Saving the meld that must be layed, according to rules
+                    possible_picks.append({
+                        'card_index': index,
+                        'mandatory_meld': meld
+                    })
                     picked = True
                     break
+
+            # Breaking as soon as first pick is found (optional)
             if picked:
                 break
 
+        print('returning picks.. ', possible_picks)
         return possible_picks
 
 
@@ -139,6 +151,40 @@ class Data:
             points += 5
 
         return points
+
+    def get_pairs(self, hand=None):
+        """" Gets all pairs\""""
+
+        if hand is None:
+            hand = self.engine_cards
+
+        pairs = []
+        # Checking possible sequences and groups
+        for pair in combinations(hand, 2):
+            pair = list(pair)
+            if self.is_meld(pair):
+                pairs.append(pair)
+
+        return pairs
+
+    def get_lowest_card(self, hand=None):
+        """" Gets the lowest value card, if more than one, return any between them\""""
+
+        if hand is None:
+            hand = self.engine_cards
+
+        lowest_card = None
+        lowest_value = 14
+        for card in hand:
+            if int(card[:-1]) < lowest_value:
+                lowest_value = int(card[:-1])
+                lowest_card = card
+
+        return lowest_card
+
+
+
+
 
 
 

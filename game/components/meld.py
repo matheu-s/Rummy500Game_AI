@@ -8,7 +8,7 @@ class Meld:
     points = None
     points_added = None
 
-    def __init__(self, cards, meld_type):
+    def __init__(self, cards, meld_type=None):
         self.cards = cards
         self.meld_type = meld_type
         self.points = 0
