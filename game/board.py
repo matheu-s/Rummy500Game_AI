@@ -79,8 +79,8 @@ class Board:
             self.render_winner()
 
         if self.is_round_finished():
+            print('round finished')
             self.restart_round()
-            self.update_board()
 
         # Checking if player turn and action are corresponding to clicked object
         if self.turn == self.player_human:
@@ -88,8 +88,8 @@ class Board:
                 # Player decides to draw a card from hidden deck
                 if self.hidden_deck_rect.collidepoint(mouse_pos):
                     if self.deck.length() == 0:
+                        print('game finished as deck is done')
                         self.restart_round()
-                        self.update_board()
                     self.player_human.hand.add_cards(self.deck.deal(1))
                     self.action = Actions.PROCEED.value
                     self.messenger.add_message('Click Continue to check possible melds', 2000)
@@ -490,6 +490,7 @@ class Board:
             or self.player_human.get_points() + self.human_points_acc > 499
 
     def restart_round(self):
+        print('restarting round')
         # Restarting the deck
         self.deck = Deck()
         self.deck.shuffle()
@@ -512,6 +513,8 @@ class Board:
 
         self.player_engine = Player(is_human=False)
         self.player_engine.set_hand(Hand(self.deck.deal(13)))
+
+        self.update_board()
 
     def render_winner(self):
         # TODO: Render winner screen

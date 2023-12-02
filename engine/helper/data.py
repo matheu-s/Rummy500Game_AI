@@ -36,7 +36,7 @@ class Data:
     def get_possible_melds(self, hand=None):
         """" Get all possible melds in engine hand\""""
 
-        if not hand:
+        if hand is None:
             hand = self.engine_cards
 
         melds = []
@@ -109,7 +109,7 @@ class Data:
 
         picked = False
         for index in range(len(discard_pile_cards)):
-            temp_hand = hand + discard_pile_cards[index:]
+            temp_hand = self.sort_hand(hand + discard_pile_cards[index:])
             print('picked: ', discard_pile_cards[index:])
             print('temp hand: ', temp_hand)
             melds = self.get_possible_melds(temp_hand)
@@ -181,6 +181,31 @@ class Data:
                 lowest_card = card
 
         return lowest_card
+
+    def sort_hand(self, hand):
+        """" Returns the hand sorted\""""
+
+        cards_dict = {
+            's': [],
+            'h': [],
+            'c': [],
+            'd': []
+        }
+
+        for i in hand:
+            cards_dict[i[-1:]].append(int(i[:-1]))
+
+        cards_dict['s'].sort()
+        cards_dict['h'].sort()
+        cards_dict['c'].sort()
+        cards_dict['d'].sort()
+
+        sorted_cards = []
+        for suit in cards_dict:
+            for i in cards_dict[suit]:
+                sorted_cards.append(str(i)+suit)
+
+        return sorted_cards
 
 
 

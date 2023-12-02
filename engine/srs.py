@@ -22,12 +22,6 @@ class SRS:
         self.data_helper.set_board_data(data)
         print('engine cards: ', self.data_helper.engine_cards)
 
-    def get_the_best_move(self):
-        self.data_helper.generate_game_tree()
-        # getting move...
-        self.move['action'] = 'draw_hidden'
-        return self.move
-
     def get_draw_move(self):
         """" Evaluates and chooses where to pick the card from\""""
 
@@ -74,7 +68,7 @@ class SRS:
             'melds': []
         }
 
-        hand = self.data_helper.engine_cards
+        hand = self.data_helper.sort_hand(self.data_helper.engine_cards)
         print('checking melds from: ', hand)
 
         # Iterate until all melds are filtered

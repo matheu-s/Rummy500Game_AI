@@ -1,7 +1,7 @@
 from enum import Enum
 
 # Main screen size
-WIDTH, HEIGHT = 1600, 900
+WIDTH, HEIGHT = (1600*0.85), (900*0.85)
 
 # Colors
 GREEN = (127, 166, 80)
