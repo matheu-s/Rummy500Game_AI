@@ -363,14 +363,15 @@ class Board:
         unseen_cards = [card for card in all_cards if card not in seen_cards]
 
         board_data = {
-            'engine_points': self.player_engine.get_points(),
-            'engine_cards': engine_cards,
-            'engine_melds': engine_melds,
-            'human_melds': human_melds,
-            'human_hand_length': len(self.player_human.hand.cards),
-            'human_points': self.player_human.get_points(),
+            'p0_points': self.player_engine.get_points(),
+            'p1_points': self.player_human.get_points(),
+            'p0_cards': engine_cards,
+            'p1_cards': None,
+            'p0_melds': engine_melds,
+            'p1_melds': human_melds,
+            'p1_hand_length': len(self.player_human.hand.cards),
             'discard_pile_cards': discard_pile,
-            'all_cards': all_cards,
+            'deck_cards': None, # TODO
             'seen_cards': seen_cards,
             'unseen_cards': unseen_cards
         }

@@ -1,6 +1,6 @@
 from engine.helper.data import Data
 from config.constants import Actions
-from collections import Counter
+import random
 from itertools import chain
 
 
@@ -20,7 +20,7 @@ class SRS:
         """" Updates Helper class data\""""
 
         self.data_helper.set_board_data(data)
-        print('engine cards: ', self.data_helper.engine_cards)
+        print('engine cards: ', self.data_helper.p0_cards)
 
     def get_draw_move(self):
         """" Evaluates and chooses where to pick the card from\""""
@@ -36,26 +36,32 @@ class SRS:
         self.move['action'] = Actions.DRAW_HIDDEN.value
         return self.move
 
-    def get_discard_move(self):
+    def get_discard_move(self, player=0):
         """" Evaluates and choose the card to discard\""""
+
+        if player == 1:
+            hand = self.data_helper.p1_cards
+        else:
+            hand = self.data_helper.p0_cards
 
         # Avoiding to discard pairs
         not_almost_meld_cards = []
-        pairs = self.data_helper.get_pairs()
+        pairs = self.data_helper.get_pairs(hand)
         cards = list(chain.from_iterable(pairs))
         set_cards = set(cards)
-        for card in self.data_helper.engine_cards:
+        for card in hand:
             if card in set_cards:
                 continue
             not_almost_meld_cards.append(card)
 
-        # If all cards have pairs, discard the least common card
+        print('hand ', hand)
         if not len(not_almost_meld_cards):
-            self.move['target'], freq = Counter(cards).most_common()[-1]
-
-        # If many not-pairs, discard the lowest value
-        if len(not_almost_meld_cards) > 0:
-            self.move['target'] = self.data_helper.get_lowest_card(not_almost_meld_cards)
+            # If all cards have pairs, discard random
+            self.move['target'] = random.choice(hand)
+            print('yep ', self.move['target'])
+        else:
+            # If more than one not-pair, discard random between them
+            self.move['target'] = random.choice(not_almost_meld_cards)
 
         self.move['action'] = Actions.DISCARD.value
 
@@ -68,8 +74,8 @@ class SRS:
             'melds': []
         }
 
-        hand = self.data_helper.sort_hand(self.data_helper.engine_cards)
-        print('checking melds from: ', hand)
+        hand = self.data_helper.sort_hand(self.data_helper.p0_cards)
+        # print('checking melds from: ', hand)
 
         # Iterate until all melds are filtered
         while len(self.data_helper.get_possible_melds(hand)) != 0:
