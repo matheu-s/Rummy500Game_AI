@@ -6,8 +6,8 @@ from labml import experiment
 from labml.configs import option
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player
 from labml_nn.cfr.infoset_saver import InfoSetSaver
-from engine.mccfr2.history import History
-from engine.mccfr2.cfr_config import CFRConfigs
+from engine.mccfr.history import History
+from engine.mccfr.cfr_config import CFRConfigs
 
 
 def create_new_history():

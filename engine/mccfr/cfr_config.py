@@ -1,14 +1,23 @@
+from typing import NewType, Dict, List, Callable, cast
+
 from labml.configs import BaseConfigs, option
-from typing import Callable
-from engine.mccfr.history import History
 from engine.mccfr.cfr import CFR
+from engine.mccfr.history import History
 
 
 class CFRConfigs(BaseConfigs):
+    """
+    ### Configurable CFR module
+    """
     create_new_history: Callable[[], History]
-    epochs: int = 1
+    epochs: int = 300
     cfr: CFR = 'simple_cfr'
+
 
 @option(CFRConfigs.cfr)
 def simple_cfr(c: CFRConfigs):
-    return CFR(create_new_history=c.create_new_history, epochs=c.epochs)
+    """
+    Initialize **CFR** algorithm
+    """
+    return CFR(create_new_history=c.create_new_history,
+               epochs=c.epochs)
