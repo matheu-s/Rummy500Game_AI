@@ -33,5 +33,5 @@ class InfoSet(_InfoSet):
         """
         total = sum(self.cumulative_strategy.values())
         total = max(total, 1e-6)
-        bet = self.cumulative_strategy[cast(Action, 'h')] / total
-        return f'{bet * 100: .1f}%'
+        draw_hidden = self.cumulative_strategy[cast(Action, 'h')] / total
+        return f'{draw_hidden * 100: .1f}%'

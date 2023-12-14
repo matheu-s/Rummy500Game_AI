@@ -38,11 +38,10 @@ class CFR:
         self.n_players = n_players
         self.epochs = epochs
         self.create_new_history = create_new_history
-        # A dictionary for $\mathcal{I}$ set of all information sets
+        # A dictionary for set of all information sets
         self.info_sets = {}
         # Tracker for analytics
         self.tracker = InfoSetTracker()
-        # print('CFR class created')
 
     def _get_info_set(self, h: History):
         """
@@ -54,26 +53,36 @@ class CFR:
         return self.info_sets[info_set_key]
 
     def walk_tree(self, h: History, i: Player, pi_i: float, pi_neg_i: float) -> float:
-        # print('walking tree with player ', i , ' - ', h.history)
+        print('This is plauer ', i , ' iterating the tree ', h.history)
 
-        # If it's a terminal history $h \in Z$ return the terminal utility $u_i(h)$.
+        # right after first action after deal
+        # if len(h.history) == 1:
+        #     print('at this point, cards are the following: ')
+        #     print('p0 cards', h.p0_cards)
+        #     print('p1 cards', h.p1_cards)
+
+        # If it's a terminal history, return the terminal utility $u_i(h)$.
         if h.is_terminal():
+            # print('is terminal, utility is for plauer ', i, ' is ',  h.terminal_utility(i))
+            # print('player 0 had ', h.p0_points)
+            # print('player 1 had ', h.p1_points)
             return h.terminal_utility(i)
         # If it's a chance event $P(h) = c$ sample a and go to next step.
         elif h.is_chance():
+            print('dealing cards')
             h.sample_chance()
 
-        # Get current player's information set for $h$
+        # Get current player's information set for h
         I = self._get_info_set(h)
-        # print('current info set of player: ', I)
 
-        # To store $\sum_{z \in Z_h} \pi^\sigma(h, z) u_i(z)$
+        # To store utility
         v = 0
         # To store for each action $a \in A(h)$
         va = {}
 
         # Iterate through all actions
         for a in I.actions():
+            print('in action ', a)
             # If the current player is $i$,
             if i == h.player():
                 va[a] = self.walk_tree(h + a, i, pi_i * I.strategy[a], pi_neg_i)

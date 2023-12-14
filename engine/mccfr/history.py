@@ -21,12 +21,12 @@ class History(_History):
     history = ''
     p0_cards = []
     p1_cards = []
+    p0_original_points = 0
+    p1_original_points = 0
     p0_points = 0
     p1_points = 0
     discard_pile = []
     hidden_deck = []
-    # TODO: Implement original cards, to keep track of same infoset from beginning
-    # TODO: Implement original points, to keep already existing points, vantage
 
     def __init__(self, history: str = '', data: Dict = None):
         """
@@ -37,6 +37,8 @@ class History(_History):
         if data is not None:
             self.p0_cards = data['p0_cards']
             self.p1_cards = data['p1_cards']
+            self.p0_original_points = data['p0_original_points']
+            self.p1_original_points = data['p1_original_points']
             self.p0_points = data['p0_points']
             self.p1_points = data['p1_points']
             self.discard_pile = data['discard_pile']
@@ -52,7 +54,13 @@ class History(_History):
         """
         Calculate the terminal utility for player 0
         """
+
         self.calculate_points()
+
+        # Discounting gifted points
+        self.p0_points = self.p0_points - self.p0_original_points
+        self.p1_points = self.p1_points - self.p1_original_points
+        print('therefore, p0 utility was : ', self.p0_points - self.p1_points)
         return self.p0_points - self.p1_points
 
     def terminal_utility(self, i: Player) -> float:
@@ -77,6 +85,8 @@ class History(_History):
         data = {
             'p0_cards': self.p0_cards,
             'p1_cards': self.p1_cards,
+            'p0_original_points': self.p0_original_points,
+            'p1_original_points': self.p1_original_points,
             'p0_points': self.p0_points,
             'p1_points': self.p1_points,
             'discard_pile': self.discard_pile,
@@ -97,6 +107,7 @@ class History(_History):
         else:
             self.p1_cards.append(card)
         self.discard()
+        print('player ', self.player(), 'drawed from discard')
 
     def draw_hidden(self):
         card = self.hidden_deck.pop()
@@ -105,6 +116,7 @@ class History(_History):
         else:
             self.p1_cards.append(card)
         self.discard()
+        print('player ', self.player(), 'drawed from hidden')
 
     def discard(self):
         """Discard a card that doesn't form a meld, otherwise random"""
@@ -193,6 +205,12 @@ class History(_History):
         Deal cards
         """
 
+        # Restarting game properties
+        self.p0_cards = []
+        self.p1_cards = []
+        self.discard_pile = []
+        self.hidden_deck = []
+
         # Shuffling
         card_list = CHANCES
         shuffle(card_list)
@@ -209,6 +227,15 @@ class History(_History):
         # Saving hidden deck
         self.hidden_deck = card_list
 
+        # Saving original points of the hand to calculate the real gain in terminal hand
+        self.calculate_points()
+        self.p0_original_points = self.p0_points
+        self.p1_original_points = self.p1_points
+
+        # End point results are calculated in the end and subtracted from originals gifted
+        self.p0_points = 0
+        self.p1_points = 0
+
         return
 
     def __repr__(self):
@@ -222,17 +249,16 @@ class History(_History):
         Information set key for the current history.
         This is a string of actions only visible to the current player.
         """
-        # Get current player
-        i = self.player()
-        # Current player sees her card and the actions
+        # Current player sees his card and the actions
         # TODO: think...make more static?
-        if i == 0:
-            return ','.join(self.p0_cards) + self.history[5:]
+        if self.player() == 0:
+            return ','.join(self.p0_cards)
         else:
-            return ','.join(self.p1_cards) + self.history[5:]
+            return ','.join(self.p1_cards)
 
     def new_info_set(self) -> InfoSet:
         # Create a new information set object
+        print('creatin new infoset!!! ', self.info_set_key())
         return InfoSet(self.info_set_key())
 
 

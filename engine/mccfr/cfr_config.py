@@ -10,7 +10,7 @@ class CFRConfigs(BaseConfigs):
     ### Configurable CFR module
     """
     create_new_history: Callable[[], History]
-    epochs: int = 300
+    epochs: int = 100
     cfr: CFR = 'simple_cfr'
 
 
