@@ -79,8 +79,8 @@ class Board:
             self.render_winner()
 
         if self.is_round_finished():
+            print('round finished')
             self.restart_round()
-            self.update_board()
 
         # Checking if player turn and action are corresponding to clicked object
         if self.turn == self.player_human:
@@ -88,8 +88,8 @@ class Board:
                 # Player decides to draw a card from hidden deck
                 if self.hidden_deck_rect.collidepoint(mouse_pos):
                     if self.deck.length() == 0:
+                        print('game finished as deck is done')
                         self.restart_round()
-                        self.update_board()
                     self.player_human.hand.add_cards(self.deck.deal(1))
                     self.action = Actions.PROCEED.value
                     self.messenger.add_message('Click Continue to check possible melds', 2000)
@@ -112,14 +112,17 @@ class Board:
             if self.action == Actions.MELD_COMBINATION.value:
                 # Checking and rendering possible melds
                 melds = self.player_human.hand.get_melds()
-                if len(melds['seq']) or len(melds['group']):
-                    # self.update_board(with_temp=True)
-                    self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
-                else:
+
+                if not len(melds['seq']) or len(melds['group']):
                     self.messenger.add_message('No melds are possible', 1500)
                     self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
+                    self.update_board(with_temp=False)
                     return True
 
+                if mouse_pos == 0:
+                    self.messenger.add_message('You can choose a meld to lay or simply continue', 2000)
+                    self.update_board(with_temp=True)
+                    return True
                 # Check if meld is clicked and add it to player
                 for meld in self.temp_melds:
                     if meld.is_clicked(mouse_pos):
@@ -129,13 +132,12 @@ class Board:
 
                 self.update_board(with_temp=True)
 
-                if mouse_pos == 0:
-                    return True
                 # Player chooses to not lay down
                 if self.button_continue.is_clicked(mouse_pos):
                     self.action = Actions.CHOOSE_INDIVIDUAL_CARD.value
                     self.messenger.add_message('You can try to lay cards from your hand into any melds on the table',
                                                2000)
+                    self.update_board(with_temp=False)
                     return True
 
             if self.action == Actions.CHOOSE_INDIVIDUAL_CARD.value:
@@ -361,14 +363,15 @@ class Board:
         unseen_cards = [card for card in all_cards if card not in seen_cards]
 
         board_data = {
-            'engine_points': self.player_engine.get_points(),
-            'engine_cards': engine_cards,
-            'engine_melds': engine_melds,
-            'human_melds': human_melds,
-            'human_hand_length': len(self.player_human.hand.cards),
-            'human_points': self.player_human.get_points(),
+            'p0_points': self.player_engine.get_points(),
+            'p1_points': self.player_human.get_points(),
+            'p0_cards': engine_cards,
+            'p1_cards': None,
+            'p0_melds': engine_melds,
+            'p1_melds': human_melds,
+            'p1_hand_length': len(self.player_human.hand.cards),
             'discard_pile_cards': discard_pile,
-            'all_cards': all_cards,
+            'deck_cards': None, # TODO
             'seen_cards': seen_cards,
             'unseen_cards': unseen_cards
         }
@@ -377,6 +380,8 @@ class Board:
 
     def engine_play(self):
         self.engine.update_data(self.get_board_data())
+
+        mandatory_meld = None  # Meld when pick from discard
         if self.action == Actions.DRAW.value:
             # Drawing card action
             move = self.engine.get_draw_move()
@@ -385,16 +390,29 @@ class Board:
                 self.player_engine.hand.add_cards(self.deck.deal(1))
             else:
                 # Engine decides to draw from discard pile
-                chosen_card_index = move['target']
-                self.player_engine.hand.add_cards(self.discard_pile.get_card(int(chosen_card_index)))
-                print('got from discard pile!')
+                pick = move['target']
+                self.player_engine.hand.add_cards(self.discard_pile.get_card(int(pick['card_index'])))
+                mandatory_meld = pick['mandatory_meld']
+                print('got from discard pile! must meld: ', mandatory_meld)
 
             self.action = Actions.MELD_COMBINATION.value
             self.engine.update_data(self.get_board_data())
             self.update_board()
 
         if self.action == Actions.MELD_COMBINATION.value:
-            # Laying melds
+            # Melding when got card from discard pile
+            if mandatory_meld:
+                print('melding mandatory: ', mandatory_meld)
+                cards_arr = []
+                for card in mandatory_meld:
+                    card_created = Card(int(card[:-1]), card[-1:])
+                    cards_arr.append(card_created)
+                meld = Meld(cards_arr)
+                self.player_engine.hand.meld(meld)
+                self.player_engine.melds.append(meld)
+                self.engine.update_data(self.get_board_data())
+
+            # Laying other melds
             melds = self.engine.get_meld_combinations_move()
             for key in melds:
                 for meld in melds[key]:
@@ -405,6 +423,7 @@ class Board:
                     meld = Meld(cards_arr, key)
                     self.player_engine.hand.meld(meld)
                     self.player_engine.melds.append(meld)
+
             self.action = Actions.MELD_INDIVIDUAL.value
             self.engine.update_data(self.get_board_data())
             self.update_board()
@@ -472,6 +491,7 @@ class Board:
             or self.player_human.get_points() + self.human_points_acc > 499
 
     def restart_round(self):
+        print('restarting round')
         # Restarting the deck
         self.deck = Deck()
         self.deck.shuffle()
@@ -487,13 +507,15 @@ class Board:
         print('round restarted')
         print('engine points: ', self.engine_points_acc)
         print('human points: ', self.human_points_acc)
-        sleep(20) # take to check board and screenshot before restarting
+        sleep(20)  # take to check board and screenshot before restarting
 
         self.player_human = Player(is_human=True)
         self.player_human.set_hand(Hand(self.deck.deal(13)))
 
         self.player_engine = Player(is_human=False)
         self.player_engine.set_hand(Hand(self.deck.deal(13)))
+
+        self.update_board()
 
     def render_winner(self):
         # TODO: Render winner screen

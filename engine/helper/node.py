@@ -10,8 +10,15 @@ class Node:
         self.ancestor = ancestor
         self.descendants = []
 
-        # print('in node.. my state is: ')
-        # print(self.state)
+    def is_terminal(self):
+        if len(self.state['p0_cards']) == 0 \
+                or len(self.state['p1_cards']) == 0 \
+                or len(self.state['deck_cards']) == 0 \
+                or self.state['p1_points'] > 499 \
+                or self.state['p0_points'] > 499:
+            return True
+        return False
+
 
 
 
