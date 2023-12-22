@@ -50,6 +50,7 @@ def calculate_meld_points(meld):
 
     return points
 
+
 def sort_hand(hand):
     """" Returns the hand sorted\""""
 
@@ -71,6 +72,19 @@ def sort_hand(hand):
     sorted_cards = []
     for suit in cards_dict:
         for i in cards_dict[suit]:
-            sorted_cards.append(str(i)+suit)
+            sorted_cards.append(str(i) + suit)
 
     return sorted_cards
+
+
+def is_meld_former(card, hand):
+    """" Checks if new card will form any meld or connect to existing ones, 1 = true, 2 = false\""""
+
+    temp_hand = hand + [card]
+    melds = get_possible_melds(temp_hand)
+
+    for meld in melds:
+        if card in meld:
+            return '1'
+
+    return '2'

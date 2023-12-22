@@ -3,13 +3,13 @@ from typing import List, cast, Dict
 from random import shuffle
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player, CFRConfigs
 from engine.mccfr.infoset import InfoSet
-from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand, is_meld_former
+from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand
 from copy import deepcopy
 
 # There are two players
 PLAYERS = cast(List[Player], [0, 1])
 
-# Cards in play
+# The three cards in play are Ace, King and Queen
 CHANCES = cast(List[Action], ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '11s', '12s', '13s',
                               '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
                               '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
@@ -27,7 +27,6 @@ class History(_History):
     p1_points = 0
     discard_pile = []
     hidden_deck = []
-    id = 0
 
     def __init__(self, history: str = '', data: Dict = None):
         """
@@ -44,15 +43,12 @@ class History(_History):
             self.p1_points = data['p1_points']
             self.discard_pile = data['discard_pile']
             self.hidden_deck = data['hidden_deck']
-            self.id = data['id'] + 1
 
     def is_terminal(self):
         """
-        Whether the history is terminal (less than 30 moves ahead, after 13 cards dealt).
+        Whether the history is terminal (less than 3 moves ahead, after 13 cards dealt).
         """
-        print(self.history)
-        print(len(self.hidden_deck))
-        return (len(self.hidden_deck) == 0 and self.history != '') or len(self.history) == 5
+        return len(self.history) == 3
 
     def _terminal_utility_p0(self) -> float:
         """
@@ -64,7 +60,7 @@ class History(_History):
         # Discounting gifted points
         self.p0_points = self.p0_points - self.p0_original_points
         self.p1_points = self.p1_points - self.p1_original_points
-        # print('therefore, p0 utility was : ', self.p0_points - self.p1_points)
+        print('therefore, p0 utility was : ', self.p0_points - self.p1_points)
         return self.p0_points - self.p1_points
 
     def terminal_utility(self, i: Player) -> float:
@@ -94,8 +90,7 @@ class History(_History):
             'p0_points': self.p0_points,
             'p1_points': self.p1_points,
             'discard_pile': self.discard_pile,
-            'hidden_deck': self.hidden_deck,
-            'id': self.id
+            'hidden_deck': self.hidden_deck
         }
 
         if other == 'd':
@@ -111,8 +106,8 @@ class History(_History):
             self.p0_cards.append(card)
         else:
             self.p1_cards.append(card)
-        # print('player ', self.player(), 'drawed from discard ', card)
         self.discard()
+        print('player ', self.player(), 'drawed from discard')
 
     def draw_hidden(self):
         card = self.hidden_deck.pop()
@@ -120,8 +115,8 @@ class History(_History):
             self.p0_cards.append(card)
         else:
             self.p1_cards.append(card)
-        # print('player ', self.player(), 'drawed from hidden ', card)
         self.discard()
+        print('player ', self.player(), 'drawed from hidden')
 
     def discard(self):
         """Discard a card that doesn't form a meld, otherwise random"""
@@ -157,7 +152,6 @@ class History(_History):
 
         # Adds card to discard pile
         self.discard_pile.append(chosen_card)
-        # print(self.player(), ' discarded: ', chosen_card)
 
     def calculate_points(self):
         """Calculates points of best melds in hand, set self points"""
@@ -168,6 +162,7 @@ class History(_History):
         }
 
         copy_p0_cards = deepcopy(self.p0_cards)
+        copy_p1_cards = deepcopy(self.p1_cards)
 
         for hand in [self.p0_cards, self.p1_cards]:
             sorted_hand = sort_hand(hand)
@@ -209,7 +204,6 @@ class History(_History):
         """
         Deal cards
         """
-        # print('DEALING!')
 
         # Restarting game properties
         self.p0_cards = []
@@ -256,33 +250,16 @@ class History(_History):
         This is a string of actions only visible to the current player.
         """
         # Current player sees his card and the actions
-        # 3 late - 2 mid - 1 early
-        game_stage = self.get_game_stage()
-        # 1 true - 2 false
-
+        # TODO: think...make more static?
         if self.player() == 0:
-            # return ','.join(self.p0_cards)
-            top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p0_cards)
-            return game_stage + '-' + top_card_discard_is_meldable
+            return ','.join(self.p0_cards)
         else:
-            # return ','.join(self.p1_cards)
-            top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p1_cards)
-            return game_stage + '-' + top_card_discard_is_meldable
+            return ','.join(self.p1_cards)
 
     def new_info_set(self) -> InfoSet:
         # Create a new information set object
-        # print('creatin new infoset!!! ', self.info_set_key())
+        print('creatin new infoset!!! ', self.info_set_key())
         return InfoSet(self.info_set_key())
-
-    def get_game_stage(self, own_hand_length=13, opp_hand_length=13):
-        """3 = late, 2 = mid, 1 = early"""
-        if len(self.hidden_deck) < 5 or opp_hand_length < 4 or own_hand_length < 4:
-            return '3'
-        elif len(self.hidden_deck) < 12 or opp_hand_length < 6 or own_hand_length < 4:
-            return '2'
-        return '1'
-
-
 
 
 def create_new_history():

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import NewType, Dict, List, Callable, cast
 
 from labml import monit, tracker, logger, experiment
@@ -53,7 +54,10 @@ class CFR:
         return self.info_sets[info_set_key]
 
     def walk_tree(self, h: History, i: Player, pi_i: float, pi_neg_i: float) -> float:
-        print('This is plauer ', i , ' iterating the tree ', h.history)
+        # print('This is plauer ', i , ' iterating the tree ', h.history, ' id ', h.id)
+        # print('p0 cards', h.p0_cards)
+        # print('p1 cards', h.p1_cards)
+        # print('and discard pile: ', h.discard_pile)
 
         # right after first action after deal
         # if len(h.history) == 1:
@@ -63,14 +67,11 @@ class CFR:
 
         # If it's a terminal history, return the terminal utility $u_i(h)$.
         if h.is_terminal():
-            # print('is terminal, utility is for plauer ', i, ' is ',  h.terminal_utility(i))
-            # print('player 0 had ', h.p0_points)
-            # print('player 1 had ', h.p1_points)
             return h.terminal_utility(i)
         # If it's a chance event $P(h) = c$ sample a and go to next step.
         elif h.is_chance():
-            print('dealing cards')
             h.sample_chance()
+            return self.walk_tree(h, i, pi_i, pi_neg_i)
 
         # Get current player's information set for h
         I = self._get_info_set(h)
@@ -82,13 +83,14 @@ class CFR:
 
         # Iterate through all actions
         for a in I.actions():
-            print('in action ', a)
+            previous_history = deepcopy(h)
+            # print('in action ', a)
             # If the current player is $i$,
             if i == h.player():
-                va[a] = self.walk_tree(h + a, i, pi_i * I.strategy[a], pi_neg_i)
+                va[a] = self.walk_tree(previous_history + a, i, pi_i * I.strategy[a], pi_neg_i)
             # Otherwise,
             else:
-                va[a] = self.walk_tree(h + a, i, pi_i, pi_neg_i * I.strategy[a])
+                va[a] = self.walk_tree(previous_history + a, i, pi_i, pi_neg_i * I.strategy[a])
             v = v + I.strategy[a] * va[a]
 
         # If the current player is $i$,
@@ -124,7 +126,7 @@ class CFR:
             tracker.save()
 
             # Save checkpoints every 10 iterations
-            if (t + 1) % 50 == 0:
+            if (t + 1) % 100 == 0:
                 experiment.save_checkpoint()
 
         # Print the information sets
