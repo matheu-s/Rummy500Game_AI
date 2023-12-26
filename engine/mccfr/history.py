@@ -3,7 +3,8 @@ from typing import List, cast, Dict
 from random import shuffle
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player, CFRConfigs
 from engine.mccfr.infoset import InfoSet
-from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand, is_meld_former
+from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand, is_meld_former, \
+    is_hand_melded, get_possible_discard_picks, is_meld, get_card_score
 from copy import deepcopy
 
 # There are two players
@@ -21,10 +22,12 @@ class History(_History):
     history = ''
     p0_cards = []
     p1_cards = []
-    p0_original_points = 0
-    p1_original_points = 0
+    p0_indiv_points = 0
+    p1_indiv_points = 0
     p0_points = 0
     p1_points = 0
+    p0_melds = []
+    p1_melds = []
     discard_pile = []
     hidden_deck = []
     id = 0
@@ -33,15 +36,18 @@ class History(_History):
         """
         Initialize with a given history string
         """
+
         self.history = history
 
         if data is not None:
             self.p0_cards = data['p0_cards']
             self.p1_cards = data['p1_cards']
-            self.p0_original_points = data['p0_original_points']
-            self.p1_original_points = data['p1_original_points']
+            self.p0_indiv_points = data['p0_indiv_points']
+            self.p1_indiv_points = data['p1_indiv_points']
             self.p0_points = data['p0_points']
             self.p1_points = data['p1_points']
+            self.p0_melds = data['p0_melds']
+            self.p1_melds = data['p1_melds']
             self.discard_pile = data['discard_pile']
             self.hidden_deck = data['hidden_deck']
             self.id = data['id'] + 1
@@ -51,8 +57,18 @@ class History(_History):
         Whether the history is terminal (less than 30 moves ahead, after 13 cards dealt).
         """
         print(self.history)
-        print(len(self.hidden_deck))
-        return (len(self.hidden_deck) == 0 and self.history != '') or len(self.history) == 5
+        if self.history[-25:] == 'ddddddddddddddddddddddddd':
+            print(self.p0_cards)
+            print(self.p1_cards)
+            print(self.p0_melds)
+            print(self.p1_melds)
+            print('dp: ', self.discard_pile)
+            print('hd: ', self.hidden_deck)
+            raise Exception('fuck')
+
+        if self.history != '':
+            return len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0
+
 
     def _terminal_utility_p0(self) -> float:
         """
@@ -62,9 +78,9 @@ class History(_History):
         self.calculate_points()
 
         # Discounting gifted points
-        self.p0_points = self.p0_points - self.p0_original_points
-        self.p1_points = self.p1_points - self.p1_original_points
-        # print('therefore, p0 utility was : ', self.p0_points - self.p1_points)
+        self.p0_points += self.p0_indiv_points
+        self.p1_points += self.p1_indiv_points
+
         return self.p0_points - self.p1_points
 
     def terminal_utility(self, i: Player) -> float:
@@ -86,33 +102,77 @@ class History(_History):
         """
         Add an action to the history and return a new history
         """
-        data = {
-            'p0_cards': self.p0_cards,
-            'p1_cards': self.p1_cards,
-            'p0_original_points': self.p0_original_points,
-            'p1_original_points': self.p1_original_points,
-            'p0_points': self.p0_points,
-            'p1_points': self.p1_points,
-            'discard_pile': self.discard_pile,
-            'hidden_deck': self.hidden_deck,
-            'id': self.id
-        }
 
+        # Draw stage
         if other == 'd':
             self.draw_discard()
         elif other == 'h':
             self.draw_hidden()
 
+        # Melding stage
+        self.meld()
+
+        # Discarding stage
+        self.discard()
+
+        data = {
+            'p0_cards': self.p0_cards,
+            'p1_cards': self.p1_cards,
+            'p0_indiv_points': self.p0_indiv_points,
+            'p1_indiv_points': self.p1_indiv_points,
+            'p0_points': self.p0_points,
+            'p1_points': self.p1_points,
+            'p0_melds': self.p0_melds,
+            'p1_melds': self.p1_melds,
+            'discard_pile': self.discard_pile,
+            'hidden_deck': self.hidden_deck,
+            'id': self.id
+        }
+
+        if self.history == '':
+            print('STARTING...')
+            print('melds p0 ', self.p0_melds)
+
         return History(self.history + other, data)
 
     def draw_discard(self):
-        card = self.discard_pile.pop()
+        # Default move is top pick
+
+        move = {
+            'card_index': len(self.discard_pile) - 1,
+            'mandatory_meld': None
+        }
+
         if self.player() == 0:
-            self.p0_cards.append(card)
+            # Get the deepest pick possible
+            long_draw = get_possible_discard_picks(self.discard_pile, self.p0_cards)
+            if long_draw is not None:
+                move = long_draw
+
+            # Removing from discard pile and appending to player's hand
+            selected_cards = self.discard_pile[int(move.get('card_index')):]
+            self.discard_pile = self.discard_pile[:int(move.get('card_index'))]
+            self.p0_cards += selected_cards
+
+            if move['mandatory_meld'] is not None:
+                self.p0_melds.append(move['mandatory_meld'])
+                for card in move['mandatory_meld']:
+                    self.p0_cards.remove(card)
         else:
-            self.p1_cards.append(card)
-        # print('player ', self.player(), 'drawed from discard ', card)
-        self.discard()
+            # Get the deepest pick possible
+            long_draw = get_possible_discard_picks(self.discard_pile, self.p1_cards)
+            if long_draw is not None:
+                move = long_draw
+
+            # Removing from discard pile and appending to player's hand
+            selected_cards = self.discard_pile[int(move.get('card_index')):]
+            self.discard_pile = self.discard_pile[:int(move.get('card_index'))]
+            self.p1_cards += selected_cards
+
+            if move['mandatory_meld'] is not None:
+                self.p1_melds.append(move['mandatory_meld'])
+                for card in move['mandatory_meld']:
+                    self.p1_cards.remove(card)
 
     def draw_hidden(self):
         card = self.hidden_deck.pop()
@@ -121,82 +181,109 @@ class History(_History):
         else:
             self.p1_cards.append(card)
         # print('player ', self.player(), 'drawed from hidden ', card)
-        self.discard()
+
+    def meld(self):
+        """Forms the highest melds"""
+
+        player = self.player()
+        if player == 0:
+            hand = self.p0_cards
+        else:
+            hand = self.p1_cards
+
+        for i in range(17):
+            melds = get_possible_melds(sort_hand(hand))
+
+            if len(melds) == 0:
+                break
+
+            for meld in melds:
+                if player == 0:
+                    self.p0_melds.append(meld)
+                    for card in meld:
+                        if card in hand:
+                            hand.remove(card)
+                else:
+                    self.p1_melds.append(meld)
+                    for card in meld:
+                        if card in hand:
+                            hand.remove(card)
+                break
+
+        # Individual lays
+        for card in hand:
+            is_melded = False
+            # Looking for p0 melds
+            for meld in self.p0_melds:
+                temp_meld = meld
+                if is_meld(temp_meld + [card]):
+                    is_melded = True
+                    meld.append(card)
+                    hand.remove(card)
+                    break
+                if is_meld([card] + temp_meld):
+                    is_melded = True
+                    meld.insert(0, card)
+                    hand.remove(card)
+                    break
+
+            # If player 1 melded in p0 melds
+            if player == 1 and is_melded:
+                self.p1_indiv_points += get_card_score(card)
+                self.p0_indiv_points -= get_card_score(card)
+                break
+
+            # If player 0 melded in p0 melds... will count in the end the points
+            if is_melded:
+                break
+
+            # Looking for the p1 melds
+            for meld in self.p1_melds:
+                if is_meld(meld + [card]):
+                    is_melded = True
+                    meld.append(card)
+                    hand.remove(card)
+                    break
+                if is_meld([card] + meld):
+                    is_melded = True
+                    meld.insert(0, card)
+                    hand.remove(card)
+                    break
+
+            # If player 0 melded in p1 melds
+            if player == 0 and is_melded:
+                self.p0_indiv_points += get_card_score(card)
+                self.p1_indiv_points -= get_card_score(card)
+                break
+
+
+        if player == 0:
+            self.p0_cards = hand
+        else:
+            self.p1_cards = hand
 
     def discard(self):
         """Discard a card that doesn't form a meld, otherwise random"""
 
-        # Getting hand
-        if self.player() == 0:
-            hand = deepcopy(self.p0_cards)
-        else:
-            hand = deepcopy(self.p1_cards)
-
-        # Saves all cards that form melds
-        meld_cards = []
-        melds = get_possible_melds(hand)
-        for meld in melds:
-            for card in meld:
-                if card not in meld_cards:
-                    meld_cards.append(card)
-
-        # Chooses the first card from hand that did not form any meld
         chosen_card = None
-        for card in hand:
-            if card not in meld_cards:
-                chosen_card = card
-                # If none was found, chooses random
-        if chosen_card is None:
-            chosen_card = random.choice(hand)
-
-        # Removes card from hand
-        if self.player() == 0:
+        # Randomly removes a card from hand, if player has any card
+        if self.player() == 0 and len(self.p0_cards) != 0:
+            chosen_card = random.choice(self.p0_cards)
             self.p0_cards.remove(chosen_card)
-        else:
+        elif self.player() == 1 and len(self.p1_cards) != 0:
+            chosen_card = random.choice(self.p1_cards)
             self.p1_cards.remove(chosen_card)
 
-        # Adds card to discard pile
-        self.discard_pile.append(chosen_card)
-        # print(self.player(), ' discarded: ', chosen_card)
+        # Add card to discard pile
+        if chosen_card is not None:
+            self.discard_pile.append(chosen_card)
 
     def calculate_points(self):
         """Calculates points of best melds in hand, set self points"""
 
-        dict_melds = {
-            'p0_melds': [],
-            'p1_melds': []
-        }
-
-        copy_p0_cards = deepcopy(self.p0_cards)
-
-        for hand in [self.p0_cards, self.p1_cards]:
-            sorted_hand = sort_hand(hand)
-            # Max melds possible 17
-            for i in range(17):
-                melds = get_possible_melds(sort_hand(sorted_hand))
-
-                if len(melds) == 0:
-                    break
-
-                highest_score = 0
-                highest_meld = None
-                for meld in melds:
-                    if calculate_meld_points(meld) > highest_score:
-                        highest_meld = meld
-
-                if highest_meld is not None:
-                    if hand == copy_p0_cards:
-                        dict_melds['p0_melds'].append(highest_meld)
-                        for card in highest_meld:
-                            sorted_hand.remove(card)
-                    else:
-                        dict_melds['p1_melds'].append(highest_meld)
-                        for card in highest_meld:
-                            sorted_hand.remove(card)
-
-        for meld in dict_melds['p0_melds']:
+        for meld in self.p0_melds:
             self.p0_points += calculate_meld_points(meld)
-        for meld in dict_melds['p1_melds']:
+        for meld in self.p1_melds:
             self.p1_points += calculate_meld_points(meld)
 
     def player(self) -> Player:
@@ -216,6 +303,8 @@ class History(_History):
         self.p1_cards = []
         self.discard_pile = []
         self.hidden_deck = []
+        self.p0_melds = []
+        self.p1_melds = []
 
         # Shuffling
         card_list = CHANCES
@@ -233,12 +322,7 @@ class History(_History):
         # Saving hidden deck
         self.hidden_deck = card_list
 
-        # Saving original points of the hand to calculate the real gain in terminal hand
-        self.calculate_points()
-        self.p0_original_points = self.p0_points
-        self.p1_original_points = self.p1_points
-
-        # End point results are calculated in the end and subtracted from originals gifted
+        # Restarting points
         self.p0_points = 0
         self.p1_points = 0
 
@@ -257,21 +341,20 @@ class History(_History):
         """
         # Current player sees his card and the actions
         # 3 late - 2 mid - 1 early
-        game_stage = self.get_game_stage()
+
         # 1 true - 2 false
 
         if self.player() == 0:
-            # return ','.join(self.p0_cards)
+            game_stage = self.get_game_stage(len(self.p0_cards), len(self.p1_cards))
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p0_cards)
             return game_stage + '-' + top_card_discard_is_meldable
         else:
-            # return ','.join(self.p1_cards)
+            game_stage = self.get_game_stage(len(self.p1_cards), len(self.p0_cards))
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p1_cards)
             return game_stage + '-' + top_card_discard_is_meldable
 
     def new_info_set(self) -> InfoSet:
         # Create a new information set object
-        # print('creatin new infoset!!! ', self.info_set_key())
         return InfoSet(self.info_set_key())
 
     def get_game_stage(self, own_hand_length=13, opp_hand_length=13):
@@ -281,8 +364,6 @@ class History(_History):
         elif len(self.hidden_deck) < 12 or opp_hand_length < 6 or own_hand_length < 4:
             return '2'
         return '1'
-
-
 
 
 def create_new_history():
