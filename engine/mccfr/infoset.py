@@ -29,7 +29,7 @@ class InfoSet(_InfoSet):
 
     def __repr__(self):
         """
-        Human readable string representation - it gives the drawing hidden probability
+        Human readable string representation - it gives the drawing hidden percentage for the found strategy in each IS
         """
         total = sum(self.cumulative_strategy.values())
         total = max(total, 1e-6)

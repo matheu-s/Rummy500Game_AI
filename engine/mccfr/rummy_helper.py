@@ -85,11 +85,24 @@ def is_meld_former(card, hand):
     temp_hand = hand + [card]
     melds = get_possible_melds(temp_hand)
 
+    # Checking if it forms meld in hand
     for meld in melds:
         if card in meld:
             return '1'
 
-    return '2'
+    # Checking if it forms pair in hand
+    for c in hand:
+        # Same rank
+        if card[:-1] == c[:-1]:
+            return '2'
+        # One rank up/down and same suit
+        if int(card[:-1]) == int(c[:-1]) + 1 and card[-1:] == c[-1:]:
+            return '2'
+        if int(card[:-1]) == int(c[:-1]) - 1 and card[-1:] == c[-1:]:
+            return '2'
+
+    # Doesn't form anything
+    return '1'
 
 
 def get_card_score(card):
@@ -133,12 +146,7 @@ def get_possible_discard_picks(discard_pile_cards=None, hand=None):
     """" Checks possible picks from discard pile, returns a list of dicts with index and the mandatory meld \""""
 
     for index in range(len(discard_pile_cards)):
-        # print(index)
-        temp_hand = sort_hand(hand + [discard_pile_cards[index]])
-        # print('hand ', hand)
-        # print('discard pile ', discard_pile_cards)
-        # print('added ', discard_pile_cards[index])
-        # print('checking ', temp_hand)
+        temp_hand = sort_hand(hand + discard_pile_cards[index:])
         melds = get_possible_melds(temp_hand)
 
         for meld in melds:

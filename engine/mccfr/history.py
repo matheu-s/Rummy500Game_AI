@@ -30,6 +30,7 @@ class History(_History):
     p1_melds = []
     discard_pile = []
     hidden_deck = []
+    uct = {}
     id = 0
 
     def __init__(self, history: str = '', data: Dict = None):
@@ -50,6 +51,7 @@ class History(_History):
             self.p1_melds = data['p1_melds']
             self.discard_pile = data['discard_pile']
             self.hidden_deck = data['hidden_deck']
+            self.uct = data['uct']
             self.id = data['id'] + 1
 
     def is_terminal(self):
@@ -57,18 +59,21 @@ class History(_History):
         Whether the history is terminal (less than 30 moves ahead, after 13 cards dealt).
         """
         print(self.history)
-        if self.history[-25:] == 'ddddddddddddddddddddddddd':
-            print(self.p0_cards)
-            print(self.p1_cards)
-            print(self.p0_melds)
-            print(self.p1_melds)
-            print('dp: ', self.discard_pile)
-            print('hd: ', self.hidden_deck)
-            raise Exception('fuck')
+        # if self.history[-25:] == 'ddddddddddddddddddddddddd':
+        #     print(self.p0_cards)
+        #     print(self.p1_cards)
+        #     print(self.p0_melds)
+        #     print(self.p1_melds)
+        #     print('dp: ', self.discard_pile)
+        #     print('hd: ', self.hidden_deck)
+        #     raise Exception('fuck')
 
         if self.history != '':
-            return len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0
-
+            if len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0:
+                print('FINISHED GAME REALLY')
+            return len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0 or self.history[
+                                                                                                       -6:] == 'dddddd' or len(
+                self.history) > 8
 
     def _terminal_utility_p0(self) -> float:
         """
@@ -126,12 +131,9 @@ class History(_History):
             'p1_melds': self.p1_melds,
             'discard_pile': self.discard_pile,
             'hidden_deck': self.hidden_deck,
+            'uct': self.uct,
             'id': self.id
         }
-
-        if self.history == '':
-            print('STARTING...')
-            print('melds p0 ', self.p0_melds)
 
         return History(self.history + other, data)
 
@@ -256,7 +258,6 @@ class History(_History):
                 self.p1_indiv_points -= get_card_score(card)
                 break
 
-
         if player == 0:
             self.p0_cards = hand
         else:
@@ -281,10 +282,17 @@ class History(_History):
     def calculate_points(self):
         """Calculates points of best melds in hand, set self points"""
 
+        # Summing meld points
         for meld in self.p0_melds:
             self.p0_points += calculate_meld_points(meld)
         for meld in self.p1_melds:
             self.p1_points += calculate_meld_points(meld)
+
+        # Reducing points from cards in hand
+        for card in self.p0_cards:
+            self.p0_points -= get_card_score(card)
+        for card in self.p1_cards:
+            self.p1_points -= get_card_score(card)
 
     def player(self) -> Player:
         """
@@ -305,6 +313,7 @@ class History(_History):
         self.hidden_deck = []
         self.p0_melds = []
         self.p1_melds = []
+        self.cpt = {}
 
         # Shuffling
         card_list = CHANCES
@@ -340,30 +349,52 @@ class History(_History):
         This is a string of actions only visible to the current player.
         """
         # Current player sees his card and the actions
-        # 3 late - 2 mid - 1 early
 
-        # 1 true - 2 false
+        # TODO: Add prob of useful card in hidden deck
 
         if self.player() == 0:
+            # 4 danger - 3 late - 2 mid - 1 early
             game_stage = self.get_game_stage(len(self.p0_cards), len(self.p1_cards))
+
+            # 3 forms meld - 2 forms pair - 1 none
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p0_cards)
-            return game_stage + '-' + top_card_discard_is_meldable
+
+            # bayesian layer estimation of deck utility
+
+
+            return f'{game_stage}-{top_card_discard_is_meldable}'
         else:
             game_stage = self.get_game_stage(len(self.p1_cards), len(self.p0_cards))
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p1_cards)
-            return game_stage + '-' + top_card_discard_is_meldable
+            return f'{game_stage}-{top_card_discard_is_meldable}'
 
     def new_info_set(self) -> InfoSet:
         # Create a new information set object
         return InfoSet(self.info_set_key())
 
     def get_game_stage(self, own_hand_length=13, opp_hand_length=13):
-        """3 = late, 2 = mid, 1 = early"""
-        if len(self.hidden_deck) < 5 or opp_hand_length < 4 or own_hand_length < 4:
-            return '3'
-        elif len(self.hidden_deck) < 12 or opp_hand_length < 6 or own_hand_length < 4:
+        """4 = danger, 3 = late, 2 = mid, 1 = early"""
+
+        if len(self.hidden_deck) >= 16 and (opp_hand_length >= 9 or own_hand_length >= 9):
+            return '1'
+        elif len(self.hidden_deck) >= 9 and (opp_hand_length >= 7 or own_hand_length >= 7):
             return '2'
-        return '1'
+        elif len(self.hidden_deck) >= 4 and (opp_hand_length >= 4 or own_hand_length >= 4):
+            return '3'
+        elif len(self.hidden_deck) < 4 and (opp_hand_length < 4 or own_hand_length < 4):
+            return '4'
+
+        # If no combination of properties is matched, categorize it based on only in deck length
+        if len(self.hidden_deck) >= 16:
+            return 1
+        elif len(self.hidden_deck) >= 9:
+            return 2
+        elif len(self.hidden_deck) >= 4:
+            return 3
+        return 4
+
+    def get_hidden_deck_estimation(self):
+        return 'inprog'
 
 
 def create_new_history():
