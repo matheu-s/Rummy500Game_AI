@@ -54,7 +54,7 @@ class CFR:
         return self.info_sets[info_set_key]
 
     def walk_tree(self, h: History, i: Player, pi_i: float, pi_neg_i: float) -> float:
-        # print('This is plauer ', i , ' iterating the tree ', h.history, ' id ', h.id)
+        print('This is plauer ', i , ' iterating the tree ', h.history, ' id ', h.id)
         # print('p0 cards', h.p0_cards)
         # print('p1 cards', h.p1_cards)
         # print('and discard pile: ', h.discard_pile)

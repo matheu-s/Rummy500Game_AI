@@ -2,7 +2,10 @@ from typing import List
 from itertools import combinations, chain
 from copy import deepcopy
 
-
+deck = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '11s', '12s', '13s',
+        '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
+        '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
+        '1c', '2c', '3c', '4c', '5c', '6c', '7c', '8c', '9c', '10c', '11c', '12c', '13c']
 def get_possible_melds(hand: List):
     """" Get all possible melds in hand of 3 and 4 cards\""""
 
@@ -88,7 +91,7 @@ def is_meld_former(card, hand):
     # Checking if it forms meld in hand
     for meld in melds:
         if card in meld:
-            return '1'
+            return '3'
 
     # Checking if it forms pair in hand
     for c in hand:
@@ -103,6 +106,119 @@ def is_meld_former(card, hand):
 
     # Doesn't form anything
     return '1'
+
+
+def get_game_stage(hidden_deck_length, own_hand_length=13, opp_hand_length=13):
+    """4 = danger, 3 = late, 2 = mid, 1 = early"""
+
+    if hidden_deck_length >= 16 and (opp_hand_length >= 9 or own_hand_length >= 9):
+        return '1'
+    elif hidden_deck_length >= 9 and (opp_hand_length >= 7 or own_hand_length >= 7):
+        return '2'
+    elif hidden_deck_length >= 4 and (opp_hand_length >= 4 or own_hand_length >= 4):
+        return '3'
+    elif hidden_deck_length < 4 and (opp_hand_length < 4 or own_hand_length < 4):
+        return '4'
+
+    # If no combination of properties is matched, categorize it based on only in deck length
+    if hidden_deck_length >= 16:
+        return 1
+    elif hidden_deck_length >= 9:
+        return 2
+    elif hidden_deck_length >= 4:
+        return 3
+    return 4
+
+
+def get_hidden_deck_estimation(cpt, current_player, visible_board_data, hidden_deck_length):
+    result_dict = {}
+
+    unseen_cards = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '11s', '12s', '13s',
+        '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
+        '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
+        '1c', '2c', '3c', '4c', '5c', '6c', '7c', '8c', '9c', '10c', '11c', '12c', '13c']
+
+    for card_list in visible_board_data.values():
+        for card in card_list:
+            if card in unseen_cards:
+                unseen_cards.remove(card)
+
+    # Filtering the cpt
+    for move in cpt.values():
+        for player in move.keys():
+            # Get only opp. action
+            if player != current_player:
+                for action in move[player].keys():
+                    if action != 'seen_cards':
+                        # Updating card points
+                        V = move[player][action]['V']
+                        cards = move[player][action]['cards']
+                        for card in cards:
+                            connections = get_card_connections(card)
+                            for conn in connections:
+                                curr_v = result_dict.get(conn)
+                                if curr_v:
+                                    new_V = curr_v + V
+                                    result_dict.update({conn: new_V})
+                                else:
+                                    result_dict.update({conn: V})
+                    else:
+                        # Updating known cards from opponent, if not already melded
+                        if move[player][action] is not None:
+                            for card in move[player][action]:
+                                if card in unseen_cards:
+                                    unseen_cards.remove(card)
+
+    # Getting wanted cards from current hand
+    wanted_cards = []
+    for card in visible_board_data[f'p{current_player}_cards']:
+        connections = get_card_connections(card)
+        for conn in connections:
+            if conn not in wanted_cards and conn in unseen_cards:
+                wanted_cards.append(conn)
+
+    # Counting how many wanted cards are estimated to be in hidden deck
+    count = 0
+    for card in wanted_cards:
+        if card in unseen_cards and result_dict.get(card):
+            # Positive points = estimated to be in hidden pile
+            if result_dict.get(card) > 0:
+                count += 1
+
+    if count >= (hidden_deck_length / 2):
+        # 50% has at least 1 point
+        return '3'
+    elif count >= (hidden_deck_length / 4):
+        # 25% has at least 1 point
+        return '2'
+    return '1'
+
+
+def get_card_connections(card):
+    suits = ['c', 'h', 's', 'd']
+
+    card_rank = int(card[:-1])
+    card_suit = card[-1:]
+
+    connections = [
+        f'{card_rank + 1}{card_suit}',  # one rank up,
+        f'{card_rank - 1}{card_suit}',  # one rank down,
+    ]
+
+    # Adding equal rank of diff suits
+    suits.remove(card[-1:])
+    for s in suits:
+        connections.append(f'{card_rank}{s}')
+
+    for conn in connections:
+        if conn[:-1] == '14' or conn[:-1] == '0':
+            connections.remove(conn)
+
+    return connections
+
+
+def get_unseen_cards(board_data):
+    return 'inp'
 
 
 def get_card_score(card):

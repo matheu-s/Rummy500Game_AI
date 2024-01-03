@@ -4,7 +4,7 @@ from random import shuffle
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player, CFRConfigs
 from engine.mccfr.infoset import InfoSet
 from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand, is_meld_former, \
-    is_hand_melded, get_possible_discard_picks, is_meld, get_card_score
+    is_hand_melded, get_possible_discard_picks, is_meld, get_card_score, get_game_stage, get_hidden_deck_estimation
 from copy import deepcopy
 
 # There are two players
@@ -30,7 +30,7 @@ class History(_History):
     p1_melds = []
     discard_pile = []
     hidden_deck = []
-    uct = {}
+    cpt = {}
     id = 0
 
     def __init__(self, history: str = '', data: Dict = None):
@@ -51,22 +51,15 @@ class History(_History):
             self.p1_melds = data['p1_melds']
             self.discard_pile = data['discard_pile']
             self.hidden_deck = data['hidden_deck']
-            self.uct = data['uct']
+            self.cpt = data['cpt']
             self.id = data['id'] + 1
+
 
     def is_terminal(self):
         """
         Whether the history is terminal (less than 30 moves ahead, after 13 cards dealt).
         """
         print(self.history)
-        # if self.history[-25:] == 'ddddddddddddddddddddddddd':
-        #     print(self.p0_cards)
-        #     print(self.p1_cards)
-        #     print(self.p0_melds)
-        #     print(self.p1_melds)
-        #     print('dp: ', self.discard_pile)
-        #     print('hd: ', self.hidden_deck)
-        #     raise Exception('fuck')
 
         if self.history != '':
             if len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0:
@@ -131,15 +124,16 @@ class History(_History):
             'p1_melds': self.p1_melds,
             'discard_pile': self.discard_pile,
             'hidden_deck': self.hidden_deck,
-            'uct': self.uct,
+            'cpt': self.cpt,
             'id': self.id
         }
 
         return History(self.history + other, data)
 
     def draw_discard(self):
-        # Default move is top pick
+        """Draws from discard pile, prioritizing long picks"""
 
+        # Default move is top pick
         move = {
             'card_index': len(self.discard_pile) - 1,
             'mandatory_meld': None
@@ -153,6 +147,7 @@ class History(_History):
 
             # Removing from discard pile and appending to player's hand
             selected_cards = self.discard_pile[int(move.get('card_index')):]
+            picked_cards = selected_cards
             self.discard_pile = self.discard_pile[:int(move.get('card_index'))]
             self.p0_cards += selected_cards
 
@@ -168,6 +163,7 @@ class History(_History):
 
             # Removing from discard pile and appending to player's hand
             selected_cards = self.discard_pile[int(move.get('card_index')):]
+            picked_cards = selected_cards
             self.discard_pile = self.discard_pile[:int(move.get('card_index'))]
             self.p1_cards += selected_cards
 
@@ -176,13 +172,49 @@ class History(_History):
                 for card in move['mandatory_meld']:
                     self.p1_cards.remove(card)
 
+        # Updating CPT action
+        self.cpt.update(
+            {
+                self.id: {
+                    self.player(): {
+                        'draw_discard': {
+                            # 'cards': ','.join([str(card) for card in picked_cards]),
+                            'cards': picked_cards,  # Card = What opp. got
+                            'V': -1
+                        }
+                    }
+                }
+            }
+        )
+
+        # Updating CPT seen cards (engine is capable of keeping track of which cards are in opp. hand after they're
+        # drawn from DP)
+        already_seen_cards = self.cpt[self.id][self.player()].get('seen_cards')
+        if already_seen_cards:
+            self.cpt[self.id][self.player()].update({'seen_cards': already_seen_cards + picked_cards})
+        else:
+            self.cpt[self.id][self.player()].update({'seen_cards': picked_cards})
+
     def draw_hidden(self):
         card = self.hidden_deck.pop()
         if self.player() == 0:
             self.p0_cards.append(card)
         else:
             self.p1_cards.append(card)
-        # print('player ', self.player(), 'drawed from hidden ', card)
+
+        # Updating CPT
+        self.cpt.update(
+            {
+                self.id: {
+                    self.player(): {
+                        'draw_hidden': {
+                            'cards': [self.discard_pile[-1]],  # Card = What player rejected
+                            'V': 1
+                        }
+                    }
+                }
+            }
+        )
 
     def meld(self):
         """Forms the highest melds"""
@@ -279,6 +311,21 @@ class History(_History):
         if chosen_card is not None:
             self.discard_pile.append(chosen_card)
 
+        # Updating cpt
+        self.cpt[self.id][self.player()].update(
+            {
+                'discard': {
+                    'cards': [self.discard_pile[-1]],  # Card = What player discard,
+                    'V': 1
+                }
+            }
+        )
+
+        # Removing the card from seen (hand info) after discarded
+        already_seen_cards = self.cpt[self.id][self.player()].get('seen_cards')
+        if already_seen_cards and self.discard_pile[-1] in already_seen_cards:
+            self.cpt[self.id][self.player()].update({'seen_cards': already_seen_cards.remove(self.discard_pile[-1])})
+
     def calculate_points(self):
         """Calculates points of best melds in hand, set self points"""
 
@@ -304,7 +351,6 @@ class History(_History):
         """
         Deal cards
         """
-        # print('DEALING!')
 
         # Restarting game properties
         self.p0_cards = []
@@ -349,52 +395,44 @@ class History(_History):
         This is a string of actions only visible to the current player.
         """
         # Current player sees his card and the actions
-
-        # TODO: Add prob of useful card in hidden deck
-
         if self.player() == 0:
             # 4 danger - 3 late - 2 mid - 1 early
-            game_stage = self.get_game_stage(len(self.p0_cards), len(self.p1_cards))
+            game_stage = get_game_stage(len(self.hidden_deck), len(self.p0_cards), len(self.p1_cards))
 
             # 3 forms meld - 2 forms pair - 1 none
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p0_cards)
 
             # bayesian layer estimation of deck utility
+            visible_data = {
+                'p0_cards': self.p0_cards,
+                'p0_melds': self.p0_melds,
+                'discard_pile': self.discard_pile,
+                'p1_melds': self.p1_melds
+            }
+            deck_utility_estimation = get_hidden_deck_estimation(self.cpt, 0, visible_data, len(self.hidden_deck))
 
-
-            return f'{game_stage}-{top_card_discard_is_meldable}'
+            return f'{game_stage}-{top_card_discard_is_meldable}-{deck_utility_estimation}'
         else:
-            game_stage = self.get_game_stage(len(self.p1_cards), len(self.p0_cards))
+            # Stage of the game (4 - danger - 3 late - 2 mid - 1 early)
+            game_stage = get_game_stage(len(self.hidden_deck), len(self.p1_cards), len(self.p0_cards))
+
+            # Discard pile pick outcome (3 forms meld - 2 forms pair - 1 none)
             top_card_discard_is_meldable = is_meld_former(self.discard_pile[-1], self.p1_cards)
-            return f'{game_stage}-{top_card_discard_is_meldable}'
+
+            # Hidden deck utility (3 - high, 2 - mid, 1 - low)
+            visible_data = {
+                'p1_cards': self.p1_cards,
+                'p1_melds': self.p1_melds,
+                'discard_pile': self.discard_pile,
+                'p0_melds': self.p0_melds
+            }
+            deck_utility_estimation = get_hidden_deck_estimation(self.cpt, 1, visible_data, len(self.hidden_deck))
+
+            return f'{game_stage}-{top_card_discard_is_meldable}-{deck_utility_estimation}'
 
     def new_info_set(self) -> InfoSet:
         # Create a new information set object
         return InfoSet(self.info_set_key())
-
-    def get_game_stage(self, own_hand_length=13, opp_hand_length=13):
-        """4 = danger, 3 = late, 2 = mid, 1 = early"""
-
-        if len(self.hidden_deck) >= 16 and (opp_hand_length >= 9 or own_hand_length >= 9):
-            return '1'
-        elif len(self.hidden_deck) >= 9 and (opp_hand_length >= 7 or own_hand_length >= 7):
-            return '2'
-        elif len(self.hidden_deck) >= 4 and (opp_hand_length >= 4 or own_hand_length >= 4):
-            return '3'
-        elif len(self.hidden_deck) < 4 and (opp_hand_length < 4 or own_hand_length < 4):
-            return '4'
-
-        # If no combination of properties is matched, categorize it based on only in deck length
-        if len(self.hidden_deck) >= 16:
-            return 1
-        elif len(self.hidden_deck) >= 9:
-            return 2
-        elif len(self.hidden_deck) >= 4:
-            return 3
-        return 4
-
-    def get_hidden_deck_estimation(self):
-        return 'inprog'
 
 
 def create_new_history():
