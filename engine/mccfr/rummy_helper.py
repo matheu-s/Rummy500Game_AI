@@ -6,6 +6,8 @@ deck = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '11s', '12s
         '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
         '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
         '1c', '2c', '3c', '4c', '5c', '6c', '7c', '8c', '9c', '10c', '11c', '12c', '13c']
+
+
 def get_possible_melds(hand: List):
     """" Get all possible melds in hand of 3 and 4 cards\""""
 
@@ -18,6 +20,29 @@ def get_possible_melds(hand: List):
                 melds.append(comb)
 
     return melds
+
+
+def get_card_quality(card, pile):
+    pair = 0
+    # Checking if it forms pair in hand
+    for c in pile:
+        # Same rank
+        if card[:-1] == c[:-1]:
+            pair += 1
+            continue
+        # One rank up/down and same suit
+        if int(card[:-1]) == int(c[:-1]) + 1 and card[-1:] == c[-1:]:
+            pair += 1
+            continue
+        if int(card[:-1]) == int(c[:-1]) - 1 and card[-1:] == c[-1:]:
+            pair += 1
+            continue
+
+    if pair >= 2:
+        return '3'
+    elif pair == 1:
+        return '2'
+    return '1'
 
 
 def is_seq(cards):
@@ -110,6 +135,7 @@ def is_meld_former(card, hand):
 
 def get_game_stage(hidden_deck_length, own_hand_length=13, opp_hand_length=13):
     """4 = danger, 3 = late, 2 = mid, 1 = early"""
+    # print('returning danger ', hidden_deck_length, opp_hand_length, own_hand_length)
 
     if hidden_deck_length >= 16 and (opp_hand_length >= 9 or own_hand_length >= 9):
         return '1'
@@ -118,6 +144,7 @@ def get_game_stage(hidden_deck_length, own_hand_length=13, opp_hand_length=13):
     elif hidden_deck_length >= 4 and (opp_hand_length >= 4 or own_hand_length >= 4):
         return '3'
     elif hidden_deck_length < 4 and (opp_hand_length < 4 or own_hand_length < 4):
+        # print('returning danger')
         return '4'
 
     # If no combination of properties is matched, categorize it based on only in deck length
@@ -134,9 +161,9 @@ def get_hidden_deck_estimation(cpt, current_player, visible_board_data, hidden_d
     result_dict = {}
 
     unseen_cards = ['1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', '11s', '12s', '13s',
-        '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
-        '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
-        '1c', '2c', '3c', '4c', '5c', '6c', '7c', '8c', '9c', '10c', '11c', '12c', '13c']
+                    '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d', '12d', '13d',
+                    '1h', '2h', '3h', '4h', '5h', '6h', '7h', '8h', '9h', '10h', '11h', '12h', '13h',
+                    '1c', '2c', '3c', '4c', '5c', '6c', '7c', '8c', '9c', '10c', '11c', '12c', '13c']
 
     for card_list in visible_board_data.values():
         for card in card_list:
@@ -192,6 +219,36 @@ def get_hidden_deck_estimation(cpt, current_player, visible_board_data, hidden_d
         # 25% has at least 1 point
         return '2'
     return '1'
+
+
+def get_opp_importance_estimation(cpt, card, current_player):
+    result_dict = {}
+    for move in cpt.values():
+        for player in move.keys():
+            # Get only opp. action
+            if player != current_player:
+                for action in move[player].keys():
+                    if action != 'seen_cards':
+                        # Updating card points
+                        V = move[player][action]['V']
+                        cards = move[player][action]['cards']
+                        for card in cards:
+                            connections = get_card_connections(card)
+                            for conn in connections:
+                                curr_v = result_dict.get(conn)
+                                if curr_v:
+                                    new_V = curr_v + V
+                                    result_dict.update({conn: new_V})
+                                else:
+                                    result_dict.update({conn: V})
+
+    v = result_dict.get(card)
+    if v is not None:
+        if v < 0:
+            return '3'
+        if v > 0:
+            return '1'
+    return '2'
 
 
 def get_card_connections(card):

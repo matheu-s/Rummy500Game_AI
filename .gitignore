@@ -163,4 +163,5 @@ cython_debug/
 test.py
 
 # mccfr logs
-engine/mccfr/logs
+engine/mccfr/discard/logs
+engine/mccfr/draw/logs

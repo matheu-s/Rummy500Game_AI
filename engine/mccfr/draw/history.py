@@ -2,7 +2,7 @@ import random
 from typing import List, cast, Dict
 from random import shuffle
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player, CFRConfigs
-from engine.mccfr.infoset import InfoSet
+from engine.mccfr.draw.infoset import InfoSet
 from engine.mccfr.rummy_helper import get_possible_melds, calculate_meld_points, sort_hand, is_meld_former, \
     is_hand_melded, get_possible_discard_picks, is_meld, get_card_score, get_game_stage, get_hidden_deck_estimation
 from copy import deepcopy
@@ -54,19 +54,16 @@ class History(_History):
             self.cpt = data['cpt']
             self.id = data['id'] + 1
 
-
     def is_terminal(self):
         """
         Whether the history is terminal (less than 30 moves ahead, after 13 cards dealt).
         """
-        print(self.history)
+        # print(self.history)
 
         if self.history != '':
-            if len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0:
-                print('FINISHED GAME REALLY')
+            # if len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0:
             return len(self.hidden_deck) == 0 or len(self.p0_cards) == 0 or len(self.p1_cards) == 0 or self.history[
-                                                                                                       -6:] == 'dddddd' or len(
-                self.history) > 8
+                                                                                                       -6:] == 'dddddd' or len(self.history) > 16
 
     def _terminal_utility_p0(self) -> float:
         """
@@ -310,21 +307,20 @@ class History(_History):
         # Add card to discard pile
         if chosen_card is not None:
             self.discard_pile.append(chosen_card)
-
-        # Updating cpt
-        self.cpt[self.id][self.player()].update(
-            {
-                'discard': {
-                    'cards': [self.discard_pile[-1]],  # Card = What player discard,
-                    'V': 1
+            # Updating cpt
+            self.cpt[self.id][self.player()].update(
+                {
+                    'discard': {
+                        'cards': [self.discard_pile[-1]],  # Card = What player discard,
+                        'V': 1
+                    }
                 }
-            }
-        )
-
-        # Removing the card from seen (hand info) after discarded
-        already_seen_cards = self.cpt[self.id][self.player()].get('seen_cards')
-        if already_seen_cards and self.discard_pile[-1] in already_seen_cards:
-            self.cpt[self.id][self.player()].update({'seen_cards': already_seen_cards.remove(self.discard_pile[-1])})
+            )
+            # Removing the card from seen (hand info) after discarded
+            already_seen_cards = self.cpt[self.id][self.player()].get('seen_cards')
+            if already_seen_cards and self.discard_pile[-1] in already_seen_cards:
+                self.cpt[self.id][self.player()].update(
+                    {'seen_cards': already_seen_cards.remove(self.discard_pile[-1])})
 
     def calculate_points(self):
         """Calculates points of best melds in hand, set self points"""
@@ -411,6 +407,7 @@ class History(_History):
             }
             deck_utility_estimation = get_hidden_deck_estimation(self.cpt, 0, visible_data, len(self.hidden_deck))
 
+            # print('returning stage ', game_stage , ' for IS')
             return f'{game_stage}-{top_card_discard_is_meldable}-{deck_utility_estimation}'
         else:
             # Stage of the game (4 - danger - 3 late - 2 mid - 1 early)
