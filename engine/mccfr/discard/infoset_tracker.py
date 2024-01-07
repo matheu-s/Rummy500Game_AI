@@ -2,7 +2,7 @@ from typing import NewType, Dict, List, Callable, cast
 
 from labml import monit, tracker, logger, experiment
 from labml.configs import BaseConfigs, option
-from engine.mccfr.infoset import InfoSet
+from engine.mccfr.discard.infoset import InfoSet
 
 
 # A player $i \in N$ where $N$ is the set of players

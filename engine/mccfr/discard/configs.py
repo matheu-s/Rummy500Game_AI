@@ -6,8 +6,8 @@ from labml import experiment
 from labml.configs import option
 from labml_nn.cfr import History as _History, InfoSet as _InfoSet, Action, Player
 from labml_nn.cfr.infoset_saver import InfoSetSaver
-from engine.mccfr.history import History
-from engine.mccfr.cfr_config import CFRConfigs
+from engine.mccfr.discard.history import History
+from engine.mccfr.discard.cfr_config import CFRConfigs
 
 
 def create_new_history():
@@ -39,7 +39,7 @@ def main():
     # Since the algorithm iterates fast and we track data on each iteration, writing to
     # other destinations such as Tensorboard can be relatively time consuming.
     # SQLite is enough for our analytics.
-    experiment.create(name='rummy', writers={'sqlite'})
+    experiment.create(name='rummy_discard', writers={'sqlite'})
     # Initialize configuration
     conf = Configs()
     # Load configuration

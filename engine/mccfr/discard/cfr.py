@@ -2,9 +2,9 @@ from copy import deepcopy
 from typing import NewType, Dict, List, Callable, cast
 
 from labml import monit, tracker, logger, experiment
-from engine.mccfr.history import History
-from engine.mccfr.infoset import InfoSet
-from engine.mccfr.infoset_tracker import InfoSetTracker
+from engine.mccfr.discard.history import History
+from engine.mccfr.discard.infoset import InfoSet
+from engine.mccfr.discard.infoset_tracker import InfoSetTracker
 
 
 Player = NewType('Player', int)
@@ -44,26 +44,17 @@ class CFR:
         # Tracker for analytics
         self.tracker = InfoSetTracker()
 
-    def _get_info_set(self, h: History):
+    def _get_info_set(self, h: History, card):
         """
         Returns the information set $I$ of the current player for a given history $h$
         """
-        info_set_key = h.info_set_key()
+        info_set_key = h.info_set_key(card)
         if info_set_key not in self.info_sets:
-            self.info_sets[info_set_key] = h.new_info_set()
+            self.info_sets[info_set_key] = h.new_info_set(card)
         return self.info_sets[info_set_key]
 
     def walk_tree(self, h: History, i: Player, pi_i: float, pi_neg_i: float) -> float:
         # print('This is plauer ', i , ' iterating the tree ', h.history, ' id ', h.id)
-        # print('p0 cards', h.p0_cards)
-        # print('p1 cards', h.p1_cards)
-        # print('and discard pile: ', h.discard_pile)
-
-        # right after first action after deal
-        # if len(h.history) == 1:
-        #     print('at this point, cards are the following: ')
-        #     print('p0 cards', h.p0_cards)
-        #     print('p1 cards', h.p1_cards)
 
         # If it's a terminal history, return the terminal utility $u_i(h)$.
         if h.is_terminal():
@@ -73,8 +64,16 @@ class CFR:
             h.sample_chance()
             return self.walk_tree(h, i, pi_i, pi_neg_i)
 
+        # Player draws and melds
+        h.initial_moves()
+
+        next_discard = h.discard_option()
+        if next_discard is None:
+            # print('terminal')
+            return self.walk_tree(h, i, pi_i, pi_neg_i)
+
         # Get current player's information set for h
-        I = self._get_info_set(h)
+        I = self._get_info_set(h, next_discard)
 
         # To store utility
         v = 0
@@ -84,13 +83,12 @@ class CFR:
         # Iterate through all actions
         for a in I.actions():
             previous_history = deepcopy(h)
-            # print('in action ', a)
             # If the current player is $i$,
             if i == h.player():
-                va[a] = self.walk_tree(previous_history + a, i, pi_i * I.strategy[a], pi_neg_i)
+                va[a] = self.walk_tree(previous_history + f'{a}-{next_discard}', i, pi_i * I.strategy[a], pi_neg_i)
             # Otherwise,
             else:
-                va[a] = self.walk_tree(previous_history + a, i, pi_i, pi_neg_i * I.strategy[a])
+                va[a] = self.walk_tree(previous_history + f'{a}', i, pi_i, pi_neg_i * I.strategy[a])
             v = v + I.strategy[a] * va[a]
 
         # If the current player is $i$,
@@ -105,15 +103,9 @@ class CFR:
             I.calculate_strategy()
 
         # Return the expected utility for player $i$,
-        # print('utility is: ', v)
-        # print('for player ', i)
-        # print('when history was  ', h.history)
-        # print('utility is: ', v)
-        # print('updated ', h.info_set_key())
         return v
 
     def iterate(self):
-        # print('iterating')
         # Loop for `epochs` times
         for t in monit.iterate('Train', self.epochs):
             # Walk tree and update regrets for each player
